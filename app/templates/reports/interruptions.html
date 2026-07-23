@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import stat_tile, empty_state %}
+{% block title %}Interruption Report · PriorityShift{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-5xl space-y-6">
+  <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Interruption Report</h1>
+  {% include "reports/_filter_bar.html" %}
+
+  <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+    {{ stat_tile("Interruptions", data.total_count) }}
+    {{ stat_tile("Total hours lost", data.total_hours, tone="danger" if data.total_hours else "default") }}
+    {{ stat_tile("Context-switch hours", data.context_switch_hours) }}
+    {{ stat_tile("Avg duration (min)", data.avg_duration_minutes) }}
+  </div>
+
+  <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+    <div class="card p-4">
+      <h3 class="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-100">Most common sources</h3>
+      {% if data.by_source %}
+      <ul class="space-y-1 text-sm">
+        {% for name, count in data.by_source %}<li class="flex justify-between text-slate-600 dark:text-slate-300"><span>{{ name }}</span><span class="font-medium">{{ count }}</span></li>{% endfor %}
+      </ul>
+      {% else %}{{ empty_state("No interruptions logged", "") }}{% endif %}
+    </div>
+    <div class="card p-4">
+      <h3 class="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-100">Most interrupted projects</h3>
+      {% if data.most_interrupted_projects %}
+      <ul class="space-y-1 text-sm">
+        {% for name, count in data.most_interrupted_projects %}<li class="flex justify-between text-slate-600 dark:text-slate-300"><span>{{ name }}</span><span class="font-medium">{{ count }}</span></li>{% endfor %}
+      </ul>
+      {% else %}{{ empty_state("Nothing yet", "") }}{% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import tag_pill, empty_state %}
+{% block title %}{{ idea.idea_number }} · {{ idea.title }} · PriorityShift{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-4xl space-y-6" x-data="{ tab: 'overview' }">
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <p class="font-mono text-xs text-slate-400">{{ idea.idea_number }}</p>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ idea.title }}</h1>
+      <span class="mt-2 inline-block rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">{{ idea.review_status|replace('_',' ')|title }}</span>
+    </div>
+    <form method="post" action="{{ url_for('ideas.vote', idea_id=idea.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn-secondary">▲ {{ idea.votes_count }} interested</button>
+    </form>
+  </div>
+
+  {% if converted_item %}
+  <div class="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800 ring-1 ring-inset ring-emerald-600/20 dark:bg-emerald-950/30 dark:text-emerald-300">
+    Converted to
+    <a href="{{ url_for('projects.detail', project_id=converted_item.id) if idea.converted_to_type == 'project' else url_for('chores.detail', chore_id=converted_item.id) }}" class="font-medium underline">
+      {{ converted_item.project_number if idea.converted_to_type == 'project' else converted_item.chore_number }}
+    </a>
+  </div>
+  {% endif %}
+
+  <div class="border-b border-slate-200 dark:border-white/[0.06]">
+    <nav class="-mb-px flex gap-6 text-sm">
+      {% for key, label in [("overview","Overview"), ("comments","Comments"), ("attachments","Attachments"), ("timeline","Timeline")] %}
+      <button @click="tab = '{{ key }}'" :class="tab === '{{ key }}' ? 'border-brand-600 text-brand-600 dark:text-brand-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400'"
+              class="whitespace-nowrap border-b-2 px-1 py-3 font-medium">{{ label }}</button>
+      {% endfor %}
+    </nav>
+  </div>
+
+  <div x-show="tab === 'overview'" class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <div class="lg:col-span-2 space-y-4">
+      <div class="card p-4">
+        <h3 class="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-100">Description</h3>
+        <p class="whitespace-pre-wrap text-sm text-slate-600 dark:text-slate-300">{{ idea.description or "—" }}</p>
+      </div>
+      {% if idea.potential_value or idea.expected_benefit %}
+      <div class="card p-4 space-y-3">
+        {% if idea.potential_value %}<div><h4 class="text-xs font-semibold uppercase text-slate-500">Potential value</h4><p class="text-sm text-slate-600 dark:text-slate-300">{{ idea.potential_value }}</p></div>{% endif %}
+        {% if idea.expected_benefit %}<div><h4 class="text-xs font-semibold uppercase text-slate-500">Expected benefit</h4><p class="text-sm text-slate-600 dark:text-slate-300">{{ idea.expected_benefit }}</p></div>{% endif %}
+        {% if idea.possible_users_affected %}<div><h4 class="text-xs font-semibold uppercase text-slate-500">Who's affected</h4><p class="text-sm text-slate-600 dark:text-slate-300">{{ idea.possible_users_affected }}</p></div>{% endif %}
+      </div>
+      {% endif %}
+      {% if idea.tags %}<div class="flex flex-wrap gap-1.5">{% for t in idea.tags %}{{ tag_pill(t) }}{% endfor %}</div>{% endif %}
+    </div>
+
+    <div class="space-y-4">
+      {% if current_user.has_permission('review_requests') and not idea.is_converted %}
+      <div class="card p-4">
+        <h3 class="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-100">Review status</h3>
+        <form method="post" action="{{ url_for('ideas.update_status', idea_id=idea.id) }}" class="flex gap-2">
+          {{ status_form.hidden_tag() }}
+          {{ status_form.review_status(class="field-input") }}
+          <button type="submit" class="btn-secondary shrink-0">Update</button>
+        </form>
+      </div>
+      {% endif %}
+
+      {% if current_user.has_permission('convert_idea') and not idea.is_converted %}
+      <div class="card p-4">
+        <h3 class="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-100">Convert to project</h3>
+        <form method="post" action="{{ url_for('ideas.convert_to_project', idea_id=idea.id) }}" class="space-y-2">
+          {{ convert_project_form.hidden_tag() }}
+          {{ convert_project_form.priority_level_id(class="field-input") }}
+          {{ convert_project_form.phase_id(class="field-input") }}
+          {{ convert_project_form.target_deadline(class="field-input") }}
+          <button type="submit" class="btn-primary w-full">Convert to project</button>
+        </form>
+      </div>
+      <div class="card p-4">
+        <h3 class="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-100">Convert to chore</h3>
+        <form method="post" action="{{ url_for('ideas.convert_to_chore', idea_id=idea.id) }}" class="space-y-2">
+          {{ convert_chore_form.hidden_tag() }}
+          {{ convert_chore_form.priority_level_id(class="field-input") }}
+          {{ convert_chore_form.recurrence_type(class="field-input") }}
+          {{ convert_chore_form.due_date(class="field-input") }}
+          <button type="submit" class="btn-primary w-full">Convert to chore</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div x-show="tab === 'comments'" class="card p-4">
+    {% with item_type = "idea", item_id = idea.id %}
+      {% include "partials/_comment_list.html" %}
+    {% endwith %}
+  </div>
+
+  <div x-show="tab === 'attachments'" class="card p-4">
+    {% with item_type = "idea", item_id = idea.id %}
+      {% include "partials/_attachment_list.html" %}
+    {% endwith %}
+  </div>
+
+  <div x-show="tab === 'timeline'" class="card">
+    {% if timeline %}
+    <div class="divide-y divide-slate-100 dark:divide-white/[0.06]">
+      {% for t in timeline %}
+      <div class="px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300"><span class="text-slate-400">{{ t.created_at.strftime('%b %-d, %Y') }}</span> — {{ t.description }}</div>
+      {% endfor %}
+    </div>
+    {% else %}{{ empty_state("No activity yet", "") }}{% endif %}
+  </div>
+</div>
+{% endblock %}

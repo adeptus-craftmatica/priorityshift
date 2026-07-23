@@ -1,0 +1,120 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+[x-cloak] {
+  display: none !important;
+}
+
+@layer base {
+  html {
+    @apply antialiased;
+  }
+  body {
+    @apply bg-slate-50 text-slate-800 dark:bg-surface-dark dark:text-slate-200;
+    font-feature-settings: "cv11", "ss01";
+  }
+  ::selection {
+    @apply bg-brand-200 text-brand-900;
+  }
+  h1, h2, h3 {
+    @apply tracking-tight;
+  }
+}
+
+@layer components {
+  /* Priority color system — used by the priority_badge() macro. Color is
+     never the only signal: label + icon always accompany it. */
+  .priority-critical {
+    @apply bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-400/30;
+  }
+  .priority-urgent {
+    @apply bg-orange-50 text-orange-700 ring-1 ring-inset ring-orange-600/20 dark:bg-orange-500/10 dark:text-orange-300 dark:ring-orange-400/30;
+  }
+  .priority-high {
+    @apply bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-400/30;
+  }
+  .priority-normal {
+    @apply bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-600/20 dark:bg-sky-500/10 dark:text-sky-300 dark:ring-sky-400/30;
+  }
+  .priority-low {
+    @apply bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-500/15 dark:bg-slate-500/10 dark:text-slate-300 dark:ring-slate-400/20;
+  }
+  .priority-paused {
+    @apply bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-600/20 dark:bg-violet-500/10 dark:text-violet-300 dark:ring-violet-400/30;
+  }
+
+  .health-on_track {
+    @apply text-emerald-600 dark:text-emerald-400;
+  }
+  .health-at_risk {
+    @apply text-amber-600 dark:text-amber-400;
+  }
+  .health-off_track {
+    @apply text-rose-600 dark:text-rose-400;
+  }
+
+  .card {
+    @apply rounded-2xl border border-slate-200/80 bg-white shadow-card dark:border-white/[0.06] dark:bg-surface-dark-subtle dark:shadow-none;
+  }
+  .card-hoverable {
+    @apply card transition-all duration-150 hover:-translate-y-0.5 hover:shadow-card-hover dark:hover:border-white/[0.1];
+  }
+  .panel-header {
+    @apply flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 dark:border-white/[0.06];
+  }
+  .panel-title {
+    @apply text-sm font-semibold text-slate-800 dark:text-slate-100;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-surface-dark disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98];
+  }
+  .btn-primary {
+    @apply btn bg-brand-600 text-white shadow-sm shadow-brand-600/20 hover:bg-brand-500 hover:shadow-md hover:shadow-brand-600/30;
+  }
+  .btn-secondary {
+    @apply btn bg-white text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 hover:ring-slate-400 dark:bg-white/[0.04] dark:text-slate-200 dark:ring-white/10 dark:hover:bg-white/[0.08];
+  }
+  .btn-danger {
+    @apply btn bg-rose-600 text-white shadow-sm shadow-rose-600/20 hover:bg-rose-500 hover:shadow-md hover:shadow-rose-600/30;
+  }
+  .btn-ghost {
+    @apply btn text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/[0.06];
+  }
+
+  .field-input {
+    @apply block w-full rounded-lg border-0 py-2.5 px-3.5 text-slate-900 ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 transition-shadow focus:ring-2 focus:ring-inset focus:ring-brand-500 text-sm dark:bg-white/[0.04] dark:text-slate-100 dark:ring-white/10 dark:focus:ring-brand-500;
+  }
+  .field-label {
+    @apply block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1.5;
+  }
+
+  .nav-link {
+    @apply relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 transition-colors hover:bg-white/[0.06] hover:text-white;
+  }
+  .nav-link-active {
+    @apply bg-white/[0.08] text-white;
+  }
+  .nav-link-active::before {
+    content: "";
+    @apply absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-brand-400;
+  }
+
+  .table-refined {
+    @apply w-full text-left text-sm;
+  }
+  .table-refined thead th {
+    @apply bg-slate-50/80 px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:bg-white/[0.02] dark:text-slate-400;
+  }
+  .table-refined tbody td {
+    @apply px-5 py-4;
+  }
+  .table-refined tbody tr {
+    @apply transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.03];
+  }
+
+  .stat-tile {
+    @apply card p-5;
+  }
+}

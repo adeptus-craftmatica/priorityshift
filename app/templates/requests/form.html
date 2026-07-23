@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}New Request · PriorityShift{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-2xl">
+  <h1 class="mb-4 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">New work request</h1>
+  <form method="post" class="card space-y-5 p-6">
+    {{ form.hidden_tag() }}
+    <div>{{ form.title.label(class="field-label") }}{{ form.title(class="field-input") }}</div>
+    <div>{{ form.description.label(class="field-label") }}{{ form.description(class="field-input", rows=3) }}</div>
+    <div>{{ form.business_need.label(class="field-label") }}{{ form.business_need(class="field-input", rows=2) }}</div>
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div>{{ form.requesting_department_id.label(class="field-label") }}{{ form.requesting_department_id(class="field-input") }}</div>
+      <div>{{ form.requested_priority_id.label(class="field-label") }}{{ form.requested_priority_id(class="field-input") }}</div>
+    </div>
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div>{{ form.desired_completion_date.label(class="field-label") }}{{ form.desired_completion_date(class="field-input") }}</div>
+      <div>{{ form.approver_id.label(class="field-label") }}{{ form.approver_id(class="field-input") }}</div>
+    </div>
+    <div class="flex gap-6">
+      <label class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">{{ form.is_client() }} {{ form.is_client.label.text }}</label>
+      <label class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">{{ form.is_paid() }} {{ form.is_paid.label.text }}</label>
+    </div>
+    <div>{{ form.estimated_business_impact.label(class="field-label") }}{{ form.estimated_business_impact(class="field-input", rows=2) }}</div>
+    <div class="flex justify-end gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
+      <a href="{{ url_for('requests.list_view') }}" class="btn-secondary">Cancel</a>
+      <button type="submit" class="btn-primary">Submit request</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

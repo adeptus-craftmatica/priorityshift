@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Workflow Rules · Admin{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-3xl space-y-6">
+  <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Workflow Rules</h1>
+  <p class="text-sm text-slate-500 dark:text-slate-400">Guardrails checked before a priority change is confirmed.</p>
+  <form method="post" class="card grid grid-cols-1 gap-4 p-6 sm:grid-cols-2">
+    {{ form.hidden_tag() }}{{ form.id() }}
+    <div>{{ form.rule_type.label(class="field-label") }}{{ form.rule_type(class="field-input") }}</div>
+    <div>{{ form.scope.label(class="field-label") }}{{ form.scope(class="field-input") }}</div>
+    <div>{{ form.threshold.label(class="field-label") }}{{ form.threshold(class="field-input") }}</div>
+    <div>{{ form.description.label(class="field-label") }}{{ form.description(class="field-input") }}</div>
+    <label class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">{{ form.active() }} {{ form.active.label.text }}</label>
+    <div class="sm:col-span-2 flex justify-end gap-2">
+      {% if form.id.data %}<a href="{{ url_for('admin.workflow_rules') }}" class="btn-secondary">Cancel</a>{% endif %}
+      <button type="submit" class="btn-primary">Save</button>
+    </div>
+  </form>
+  <div class="card divide-y divide-slate-100 dark:divide-white/[0.06]">
+    {% for r in rules %}
+    <div class="flex items-center justify-between px-4 py-2.5 text-sm">
+      <div>
+        <p class="font-medium text-slate-800 dark:text-slate-100">{{ r.rule_type|replace('_',' ')|title }}</p>
+        <p class="text-xs text-slate-500">{{ r.scope }} · threshold {{ r.threshold or "—" }}{{ " · inactive" if not r.active }}</p>
+      </div>
+      <a href="{{ url_for('admin.workflow_rules', edit_id=r.id) }}" class="text-brand-600 hover:underline dark:text-brand-400">Edit</a>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

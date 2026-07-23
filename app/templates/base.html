@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>{% block title %}PriorityShift{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
+  <script src="{{ url_for('static', filename='vendor/htmx.min.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='vendor/alpine.min.js') }}" defer></script>
+  <script>
+    (function () {
+      const stored = localStorage.getItem('theme');
+      const theme = stored || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+</head>
+<body class="h-full" hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}'>
+{% if current_user.is_authenticated and current_user.is_client_contact %}
+<div class="min-h-screen bg-slate-50 dark:bg-surface-dark">
+  <header class="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 dark:border-white/[0.06] dark:bg-surface-dark-subtle sm:px-6 lg:px-8">
+    <div class="flex items-center gap-2.5">
+      <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="white" class="h-5 w-5"><path fill-rule="evenodd" d="M10 2a.75.75 0 01.75.75v.258a33.186 33.186 0 016.668.83.75.75 0 01-.336 1.461 31.28 31.28 0 00-1.03-.21c-.02.375-.048.75-.084 1.124a30.19 30.19 0 01-2.617 9.618A2.25 2.25 0 0111.25 17.5H8.75a2.25 2.25 0 01-2.101-1.669A30.192 30.192 0 014.032 6.213c-.036-.374-.064-.749-.084-1.124-.35.066-.696.14-1.03.21a.75.75 0 11-.336-1.462 33.184 33.184 0 016.668-.829V2.75A.75.75 0 0110 2z" clip-rule="evenodd" /></svg></div>
+      <span class="text-base font-semibold tracking-tight text-slate-900 dark:text-white">{{ current_user.client.name if current_user.client else "Client Portal" }}</span>
+    </div>
+    <form method="post" action="{{ url_for('auth.logout') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">Sign out</button>
+    </form>
+  </header>
+  <main class="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
+    {% include "partials/flashes.html" %}
+    {% block portal_content %}{% endblock %}
+  </main>
+</div>
+{% elif current_user.is_authenticated %}
+<div class="flex min-h-screen" x-data="{ mobileNavOpen: false }">
+  {% include "partials/sidebar.html" %}
+  <div class="flex min-w-0 flex-1 flex-col">
+    {% include "partials/topbar.html" %}
+    <main class="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+      {% include "partials/flashes.html" %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% else %}
+  {% include "partials/flashes.html" %}
+  {% block guest_content %}{% endblock %}
+{% endif %}
+
+<div id="modal-root"></div>
+<div id="toast-root" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+<script>
+  function toggleTheme() {
+    const root = document.documentElement;
+    const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+  }
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

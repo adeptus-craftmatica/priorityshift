@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import avatar %}
+{% block title %}Users · Admin{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-5xl space-y-6">
+  <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Users</h1>
+
+  <form method="post" class="card grid grid-cols-1 gap-4 p-6 sm:grid-cols-2">
+    {{ form.hidden_tag() }}{{ form.id() }}
+    <div>{{ form.username.label(class="field-label") }}{{ form.username(class="field-input") }}</div>
+    <div>{{ form.email.label(class="field-label") }}{{ form.email(class="field-input") }}</div>
+    <div>{{ form.full_name.label(class="field-label") }}{{ form.full_name(class="field-input") }}</div>
+    <div>{{ form.password.label(class="field-label") }}{{ form.password(class="field-input", placeholder="Leave blank to keep current") }}</div>
+    <div>{{ form.role_id.label(class="field-label") }}{{ form.role_id(class="field-input") }}</div>
+    <div>{{ form.capacity_hours_per_week.label(class="field-label") }}{{ form.capacity_hours_per_week(class="field-input") }}</div>
+    <div>{{ form.manager_id.label(class="field-label") }}{{ form.manager_id(class="field-input") }}</div>
+    <div>{{ form.team_lead_id.label(class="field-label") }}{{ form.team_lead_id(class="field-input") }}</div>
+    <div>{{ form.department_ids.label(class="field-label") }}{{ form.department_ids(class="field-input", size=4) }}</div>
+    <div>{{ form.team_ids.label(class="field-label") }}{{ form.team_ids(class="field-input", size=4) }}</div>
+    <div>
+      {{ form.client_id.label(class="field-label") }}{{ form.client_id(class="field-input") }}
+      <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Leave as None for internal staff. Setting this restricts the account to the client portal.</p>
+    </div>
+    <label class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">{{ form.active() }} {{ form.active.label.text }}</label>
+    <div class="sm:col-span-2 flex justify-end gap-2">
+      {% if form.id.data %}<a href="{{ url_for('admin.users') }}" class="btn-secondary">Cancel edit</a>{% endif %}
+      <button type="submit" class="btn-primary">Save user</button>
+    </div>
+  </form>
+
+  <div class="card overflow-x-auto">
+    <table class="w-full text-left text-sm">
+      <thead>
+        <tr class="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
+          <th class="px-4 py-2 font-medium">Name</th><th class="px-4 py-2 font-medium">Role</th><th class="px-4 py-2 font-medium">Status</th><th class="px-4 py-2 font-medium"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100 dark:divide-white/[0.06]">
+        {% for u in users %}
+        <tr>
+          <td class="px-4 py-2.5"><div class="flex items-center gap-2">{{ avatar(u, size=6) }}{{ u.full_name }}</div></td>
+          <td class="px-4 py-2.5 text-slate-600 dark:text-slate-300">{{ u.role.name }}</td>
+          <td class="px-4 py-2.5">
+            {% if u.active %}
+              <span class="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">Active</span>
+            {% else %}
+              <span class="inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">Locked out</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-2.5">
+            <div class="flex items-center gap-3">
+              <a href="{{ url_for('admin.users', edit_id=u.id) }}" class="text-brand-600 hover:underline dark:text-brand-400">Edit</a>
+              <a href="{{ url_for('admin.reset_password', user_id=u.id) }}" class="text-brand-600 hover:underline dark:text-brand-400">Reset password</a>
+              {% if u.id != current_user.id %}
+              <form method="post" action="{{ url_for('admin.toggle_active', user_id=u.id) }}"
+                    onsubmit="return confirm('{{ 'Unlock' if not u.active else 'Lock out' }} {{ u.full_name }}?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="{{ 'text-emerald-600 dark:text-emerald-400' if not u.active else 'text-rose-600 dark:text-rose-400' }} hover:underline">
+                  {{ "Unlock" if not u.active else "Lock out" }}
+                </button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

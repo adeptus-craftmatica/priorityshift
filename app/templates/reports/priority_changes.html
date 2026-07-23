@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import stat_tile, empty_state, reprioritization_tally %}
+{% block title %}Priority Change Report · PriorityShift{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-5xl space-y-6">
+  <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Priority Change Report</h1>
+  {% include "reports/_filter_bar.html" %}
+
+  <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
+    {{ stat_tile("Total changes", data.total_changes) }}
+    {{ stat_tile("Avg per project", data.avg_per_project) }}
+    {{ stat_tile("Projects w/ changes", data.by_project|length) }}
+  </div>
+
+  <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+    <div class="card p-4">
+      <h3 class="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-100">Most changes by requester</h3>
+      {% if data.by_requester %}
+      <ul class="space-y-1 text-sm">
+        {% for name, count in data.by_requester %}<li class="flex justify-between text-slate-600 dark:text-slate-300"><span>{{ name }}</span><span class="font-medium">{{ count }}</span></li>{% endfor %}
+      </ul>
+      {% else %}<p class="text-sm text-slate-400">No data yet.</p>{% endif %}
+    </div>
+    <div class="card p-4">
+      <h3 class="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-100">Most changes by department</h3>
+      {% if data.by_department %}
+      <ul class="space-y-1 text-sm">
+        {% for name, count in data.by_department %}<li class="flex justify-between text-slate-600 dark:text-slate-300"><span>{{ name }}</span><span class="font-medium">{{ count }}</span></li>{% endfor %}
+      </ul>
+      {% else %}<p class="text-sm text-slate-400">No data yet.</p>{% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="border-b border-slate-100 px-5 py-4 dark:border-white/[0.06]"><h3 class="text-sm font-semibold text-slate-800 dark:text-slate-100">Most reprioritized projects</h3></div>
+    {% if data.top_reprioritized %}
+    <div class="divide-y divide-slate-100 dark:divide-white/[0.06]">
+      {% for p in data.top_reprioritized %}
+      <a href="{{ url_for('projects.detail', project_id=p.id) }}" class="flex items-center justify-between px-4 py-2.5 text-sm hover:bg-slate-50 dark:hover:bg-white/[0.03]">
+        <span class="text-slate-700 dark:text-slate-200">{{ p.project_number }} · {{ p.title }}</span>
+        {{ reprioritization_tally(p.reprioritization_count, "#") }}
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}{{ empty_state("No reprioritizations yet", "") }}{% endif %}
+  </div>
+</div>
+{% endblock %}

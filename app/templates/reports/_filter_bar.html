@@ -1,0 +1,13 @@
+<form method="get" class="card mb-4 flex flex-wrap items-end gap-3 p-4">
+  <div><label class="field-label">Start</label><input type="date" name="start" value="{{ request.args.get('start', '') }}" class="field-input"></div>
+  <div><label class="field-label">End</label><input type="date" name="end" value="{{ request.args.get('end', '') }}" class="field-input"></div>
+  <button type="submit" class="btn-secondary">Filter</button>
+  {% set export_args = request.args.to_dict() %}
+  {% set _ = export_args.pop('export', None) %}
+  <div class="ml-auto flex items-center gap-2">
+    <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Export</span>
+    <a href="{{ url_for(request.endpoint, export='csv', **export_args) }}" class="btn-secondary">CSV</a>
+    <a href="{{ url_for(request.endpoint, export='xlsx', **export_args) }}" class="btn-secondary">Excel</a>
+    <a href="{{ url_for(request.endpoint, export='pdf', **export_args) }}" class="btn-secondary">PDF</a>
+  </div>
+</form>

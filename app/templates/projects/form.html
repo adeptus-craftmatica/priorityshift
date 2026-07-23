@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}{{ "Edit " ~ project.project_number if project else "New Project" }} · PriorityShift{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-3xl">
+  <h1 class="mb-4 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ "Edit " ~ project.project_number if project else "New Project" }}</h1>
+  <form method="post" class="card space-y-5 p-6">
+    {{ form.hidden_tag() }}
+
+    <div>
+      {{ form.title.label(class="field-label") }}
+      {{ form.title(class="field-input") }}
+    </div>
+    <div>
+      {{ form.description.label(class="field-label") }}
+      {{ form.description(class="field-input", rows=3) }}
+    </div>
+
+    <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
+      <div>
+        {{ form.category.label(class="field-label") }}
+        {{ form.category(class="field-input") }}
+      </div>
+      {% if not project %}
+      <div>
+        {{ form.priority_level_id.label(class="field-label") }}
+        {{ form.priority_level_id(class="field-input") }}
+      </div>
+      {% endif %}
+      <div>
+        {{ form.phase_id.label(class="field-label") }}
+        {{ form.phase_id(class="field-input") }}
+      </div>
+      <div>
+        {{ form.client_id.label(class="field-label") }}
+        {{ form.client_id(class="field-input") }}
+      </div>
+    </div>
+
+    <div class="flex gap-6">
+      <label class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">{{ form.is_client() }} {{ form.is_client.label.text }}</label>
+      <label class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">{{ form.is_paid() }} {{ form.is_paid.label.text }}</label>
+    </div>
+
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div>
+        {{ form.requesting_department_id.label(class="field-label") }}
+        {{ form.requesting_department_id(class="field-input") }}
+      </div>
+      <div>
+        {{ form.owner_id.label(class="field-label") }}
+        {{ form.owner_id(class="field-input") }}
+      </div>
+      <div>
+        {{ form.approving_manager_id.label(class="field-label") }}
+        {{ form.approving_manager_id(class="field-input") }}
+      </div>
+    </div>
+
+    <div>
+      {{ form.assignee_ids.label(class="field-label") }}
+      {{ form.assignee_ids(class="field-input", size=6) }}
+      <p class="mt-1 text-xs text-slate-500">Cmd/Ctrl-click to select multiple.</p>
+    </div>
+
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div>
+        {{ form.date_requested.label(class="field-label") }}
+        {{ form.date_requested(class="field-input") }}
+      </div>
+      <div>
+        {{ form.date_started.label(class="field-label") }}
+        {{ form.date_started(class="field-input") }}
+      </div>
+      <div>
+        {{ form.target_deadline.label(class="field-label") }}
+        {{ form.target_deadline(class="field-input") }}
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div>
+        {{ form.estimated_effort_hours.label(class="field-label") }}
+        {{ form.estimated_effort_hours(class="field-input") }}
+      </div>
+      <div>
+        {{ form.percent_complete.label(class="field-label") }}
+        {{ form.percent_complete(class="field-input") }}
+      </div>
+    </div>
+
+    <div>{{ form.risks.label(class="field-label") }}{{ form.risks(class="field-input", rows=2) }}</div>
+    <div>{{ form.roadblocks.label(class="field-label") }}{{ form.roadblocks(class="field-input", rows=2) }}</div>
+    <div>{{ form.notes.label(class="field-label") }}{{ form.notes(class="field-input", rows=2) }}</div>
+    <div>{{ form.related_links.label(class="field-label") }}{{ form.related_links(class="field-input", rows=2) }}</div>
+    <div>{{ form.tag_names.label(class="field-label") }}{{ form.tag_names(class="field-input") }}</div>
+
+    <div class="flex justify-end gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
+      <a href="{{ url_for('projects.list_view') }}" class="btn-secondary">Cancel</a>
+      <button type="submit" class="btn-primary">{{ "Save changes" if project else "Create project" }}</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

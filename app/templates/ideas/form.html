@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}New Idea · PriorityShift{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-2xl">
+  <h1 class="mb-4 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Submit an idea</h1>
+  <form method="post" class="card space-y-5 p-6">
+    {{ form.hidden_tag() }}
+    <div>{{ form.title.label(class="field-label") }}{{ form.title(class="field-input") }}</div>
+    <div>{{ form.description.label(class="field-label") }}{{ form.description(class="field-input", rows=3) }}</div>
+    <div>{{ form.department_id.label(class="field-label") }}{{ form.department_id(class="field-input") }}</div>
+    <div>{{ form.potential_value.label(class="field-label") }}{{ form.potential_value(class="field-input", rows=2) }}</div>
+    <div>{{ form.expected_benefit.label(class="field-label") }}{{ form.expected_benefit(class="field-input", rows=2) }}</div>
+    <div>{{ form.possible_users_affected.label(class="field-label") }}{{ form.possible_users_affected(class="field-input") }}</div>
+    <div>{{ form.estimated_effort_hours.label(class="field-label") }}{{ form.estimated_effort_hours(class="field-input") }}</div>
+    <div>{{ form.notes.label(class="field-label") }}{{ form.notes(class="field-input", rows=2) }}</div>
+    <div>{{ form.tag_names.label(class="field-label") }}{{ form.tag_names(class="field-input") }}</div>
+    <div class="flex justify-end gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
+      <a href="{{ url_for('ideas.list_view') }}" class="btn-secondary">Cancel</a>
+      <button type="submit" class="btn-primary">Submit idea</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

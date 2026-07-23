@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import priority_badge, health_badge, empty_state, reprioritization_tally %}
+{% block title %}Projects · PriorityShift{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-7xl space-y-4">
+  <div class="flex items-center justify-between">
+    <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Projects</h1>
+    {% if current_user.has_permission('create_project') %}
+    <a href="{{ url_for('projects.create') }}" class="btn-primary">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4"><path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-5v-4.5z" /></svg>
+      New project
+    </a>
+    {% endif %}
+  </div>
+
+  <form method="get" class="card flex flex-wrap items-end gap-3 p-4">
+    <input type="hidden" name="view" value="{{ view }}">
+    <div class="min-w-[10rem] flex-1">
+      <label class="field-label">Search</label>
+      <input type="text" name="q" value="{{ request.args.get('q', '') }}" class="field-input" placeholder="Title, number…">
+    </div>
+    <div>
+      <label class="field-label">Priority</label>
+      <select name="priority_id" class="field-input">
+        <option value="">Any</option>
+        {% for p in priority_levels %}<option value="{{ p.id }}" {{ 'selected' if request.args.get('priority_id', type=int) == p.id }}>{{ p.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="field-label">Phase</label>
+      <select name="phase_id" class="field-input">
+        <option value="">Any</option>
+        {% for p in phases %}<option value="{{ p.id }}" {{ 'selected' if request.args.get('phase_id', type=int) == p.id }}>{{ p.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="field-label">Health</label>
+      <select name="health_status" class="field-input">
+        <option value="">Any</option>
+        <option value="on_track" {{ 'selected' if request.args.get('health_status') == 'on_track' }}>On Track</option>
+        <option value="at_risk" {{ 'selected' if request.args.get('health_status') == 'at_risk' }}>At Risk</option>
+        <option value="off_track" {{ 'selected' if request.args.get('health_status') == 'off_track' }}>Off Track</option>
+      </select>
+    </div>
+    <div>
+      <label class="field-label">Blocked</label>
+      <select name="blocked" class="field-input">
+        <option value="">Any</option>
+        <option value="1" {{ 'selected' if request.args.get('blocked') == '1' }}>Blocked only</option>
+      </select>
+    </div>
+    <button type="submit" class="btn-secondary">Filter</button>
+    {% set filter_args = request.args.to_dict() %}
+    {% set _ = filter_args.pop('view', None) %}
+    <div class="ml-auto flex rounded-lg ring-1 ring-inset ring-slate-300 dark:ring-slate-700">
+      <a href="{{ url_for('projects.list_view', view='table', **filter_args) }}" class="rounded-l-lg px-3 py-2 text-sm font-medium {{ 'bg-brand-600 text-white' if view == 'table' else 'text-slate-600 dark:text-slate-300' }}">Table</a>
+      <a href="{{ url_for('projects.list_view', view='queue', **filter_args) }}" class="px-3 py-2 text-sm font-medium {{ 'bg-brand-600 text-white' if view == 'queue' else 'text-slate-600 dark:text-slate-300' }}">Queue</a>
+      <a href="{{ url_for('projects.list_view', view='board', **filter_args) }}" class="px-3 py-2 text-sm font-medium {{ 'bg-brand-600 text-white' if view == 'board' else 'text-slate-600 dark:text-slate-300' }}">Board</a>
+      <a href="{{ url_for('projects.list_view', view='timeline', **filter_args) }}" class="rounded-r-lg px-3 py-2 text-sm font-medium {{ 'bg-brand-600 text-white' if view == 'timeline' else 'text-slate-600 dark:text-slate-300' }}">Timeline</a>
+    </div>
+  </form>
+
+  {% if view == 'board' %}
+    {% include "projects/_board.html" %}
+  {% elif view == 'timeline' %}
+    {% include "projects/_timeline.html" %}
+  {% else %}
+  <div class="card">
+    {% if projects %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead>
+          <tr class="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
+            <th class="px-4 py-2 font-medium">#</th>
+            <th class="px-4 py-2 font-medium">Title</th>
+            <th class="px-4 py-2 font-medium">Priority</th>
+            <th class="px-4 py-2 font-medium">Phase</th>
+            <th class="px-4 py-2 font-medium">Health</th>
+            <th class="px-4 py-2 font-medium">Deadline</th>
+            <th class="px-4 py-2 font-medium">Reprioritized</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 dark:divide-white/[0.06]">
+          {% for p in projects %}
+          <tr class="hover:bg-slate-50 dark:hover:bg-white/[0.03]">
+            <td class="px-4 py-2.5 font-mono text-xs text-slate-400"><a href="{{ url_for('projects.detail', project_id=p.id) }}">{{ p.project_number }}</a></td>
+            <td class="px-4 py-2.5"><a href="{{ url_for('projects.detail', project_id=p.id) }}" class="font-medium text-slate-800 hover:text-brand-600 dark:text-slate-100 dark:hover:text-brand-400">{{ p.title }}</a></td>
+            <td class="px-4 py-2.5">{{ priority_badge(p.priority_level) }}</td>
+            <td class="px-4 py-2.5 text-slate-600 dark:text-slate-300">{{ p.phase.name if p.phase }}</td>
+            <td class="px-4 py-2.5">{{ health_badge(p.health_status) }}</td>
+            <td class="px-4 py-2.5 {{ 'font-medium text-rose-600 dark:text-rose-400' if p.target_deadline and p.target_deadline < now }}">
+              {{ p.target_deadline.strftime('%b %-d, %Y') if p.target_deadline else "—" }}
+            </td>
+            <td class="px-4 py-2.5">{{ reprioritization_tally(p.reprioritization_count, url_for('projects.detail', project_id=p.id)) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      {{ empty_state("No projects match", "Try adjusting your filters.") }}
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

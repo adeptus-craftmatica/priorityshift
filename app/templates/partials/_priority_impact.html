@@ -1,0 +1,35 @@
+{% if not preview %}
+  <p>Select a new priority to see the impact.</p>
+{% else %}
+  <div class="space-y-3">
+    {% if preview.displaced %}
+      <div>
+        <p class="font-medium text-slate-700 dark:text-slate-200">This may pause:</p>
+        <ul class="mt-1 space-y-1">
+          {% for d in preview.displaced %}
+          <li class="text-slate-600 dark:text-slate-300">
+            <strong>{{ d.item.number }}</strong> ({{ d.item.title }}) — currently {{ d.user.full_name }}'s top priority
+            {% if d.item.due_date %}, due {{ d.item.due_date.strftime('%b %-d') }}{% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% else %}
+      <p class="text-emerald-700 dark:text-emerald-400">No other work appears likely to be displaced.</p>
+    {% endif %}
+
+    {% if preview.projected_deadline_shift %}
+      <p class="text-amber-700 dark:text-amber-400">{{ preview.projected_deadline_shift }}</p>
+    {% endif %}
+
+    {% if preview.warnings %}
+      <div class="space-y-1">
+        {% for w in preview.warnings %}
+          <p class="rounded-md px-2 py-1 text-xs font-medium {{ 'bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300' if w.level == 'block' else 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300' }}">
+            {{ "Blocked: " if w.level == 'block' else "Warning: " }}{{ w.message }}
+          </p>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+{% endif %}

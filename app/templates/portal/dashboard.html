@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import health_badge, empty_state %}
+{% block title %}Your Projects · PriorityShift{% endblock %}
+{% block portal_content %}
+<div class="space-y-6">
+  <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Your Projects</h1>
+
+  <div class="card">
+    {% if projects %}
+    <div class="divide-y divide-slate-100 dark:divide-white/[0.06]">
+      {% for p in projects %}
+      <a href="{{ url_for('portal.project_detail', project_id=p.id) }}" class="flex items-center justify-between gap-3 px-5 py-4 hover:bg-slate-50 dark:hover:bg-white/[0.03]">
+        <div class="min-w-0">
+          <p class="font-medium text-slate-800 dark:text-slate-100">{{ p.title }}</p>
+          <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{{ p.phase.name if p.phase else "—" }}</p>
+        </div>
+        <div class="flex shrink-0 items-center gap-4">
+          {{ health_badge(p.health_status) }}
+          <span class="text-sm text-slate-500 dark:text-slate-400">
+            {{ p.target_deadline.strftime('%b %-d, %Y') if p.target_deadline else "No date set" }}
+          </span>
+          <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">{{ p.percent_complete }}%</span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+      {{ empty_state("Nothing here yet", "Projects will show up here once work has started.") }}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

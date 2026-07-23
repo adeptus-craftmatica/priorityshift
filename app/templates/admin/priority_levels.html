@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import priority_badge %}
+{% block title %}Priority Levels · Admin{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-3xl space-y-6">
+  <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Priority Levels</h1>
+  <form method="post" class="card grid grid-cols-2 gap-4 p-6 sm:grid-cols-3">
+    {{ form.hidden_tag() }}{{ form.id() }}
+    <div>{{ form.name.label(class="field-label") }}{{ form.name(class="field-input") }}</div>
+    <div>{{ form.rank.label(class="field-label") }}{{ form.rank(class="field-input") }}</div>
+    <div>{{ form.color.label(class="field-label") }}{{ form.color(class="field-input", type="color") }}</div>
+    <label class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">{{ form.requires_acknowledgment() }} {{ form.requires_acknowledgment.label.text }}</label>
+    <label class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">{{ form.active() }} {{ form.active.label.text }}</label>
+    <div class="sm:col-span-3 flex justify-end gap-2">
+      {% if form.id.data %}<a href="{{ url_for('admin.priority_levels') }}" class="btn-secondary">Cancel</a>{% endif %}
+      <button type="submit" class="btn-primary">Save</button>
+    </div>
+  </form>
+  <div class="card divide-y divide-slate-100 dark:divide-white/[0.06]">
+    {% for p in levels %}
+    <div class="flex items-center justify-between px-4 py-2.5 text-sm">
+      {{ priority_badge(p) }}
+      <span class="text-slate-500">rank {{ p.rank }}{{ " · inactive" if not p.active }}</span>
+      <a href="{{ url_for('admin.priority_levels', edit_id=p.id) }}" class="text-brand-600 hover:underline dark:text-brand-400">Edit</a>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

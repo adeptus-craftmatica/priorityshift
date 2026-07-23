@@ -1,0 +1,13 @@
+{
+  "name": "priorityshift-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Tailwind build for PriorityShift. Not required to run the Flask app day-to-day — app/static/css/output.css is committed. Only needed when actively changing styles.",
+  "scripts": {
+    "build:css": "tailwindcss -i ./app/static/css/input.css -o ./app/static/css/output.css --minify",
+    "watch:css": "tailwindcss -i ./app/static/css/input.css -o ./app/static/css/output.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.13"
+  }
+}

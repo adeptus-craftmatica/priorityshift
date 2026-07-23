@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import health_badge, empty_state %}
+{% block title %}{{ project.title }} · PriorityShift{% endblock %}
+{% block portal_content %}
+<div class="space-y-6">
+  <a href="{{ url_for('portal.dashboard') }}" class="text-sm text-slate-500 hover:underline dark:text-slate-400">&larr; Back to your projects</a>
+
+  <div>
+    <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ project.title }}</h1>
+    <div class="mt-2 flex items-center gap-3">
+      {{ health_badge(project.health_status) }}
+      <span class="text-sm text-slate-500 dark:text-slate-400">{{ project.phase.name if project.phase else "—" }}</span>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
+    <div class="stat-tile">
+      <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Expected date</p>
+      <p class="mt-2 text-xl font-bold text-slate-900 dark:text-white">{{ project.target_deadline.strftime('%b %-d, %Y') if project.target_deadline else "TBD" }}</p>
+    </div>
+    <div class="stat-tile">
+      <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Complete</p>
+      <p class="mt-2 text-xl font-bold text-slate-900 dark:text-white">{{ project.percent_complete }}%</p>
+    </div>
+  </div>
+
+  {% if project.description %}
+  <div class="card p-5">
+    <h3 class="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-100">Overview</h3>
+    <p class="text-sm text-slate-600 dark:text-slate-300">{{ project.description }}</p>
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <div class="panel-header"><h3 class="panel-title">Discussion</h3></div>
+    {% if comments %}
+    <div class="divide-y divide-slate-100 dark:divide-white/[0.06]">
+      {% for c in comments %}
+      <div class="px-5 py-3 text-sm">
+        <p class="font-medium text-slate-800 dark:text-slate-100">{{ c.author.full_name if c.author else "—" }}</p>
+        <p class="mt-0.5 text-slate-600 dark:text-slate-300">{{ c.body }}</p>
+        <p class="mt-1 text-xs text-slate-400">{{ c.created_at.strftime('%b %-d, %Y %-I:%M %p') }}</p>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+      <div class="p-5">{{ empty_state("No messages yet", "Questions or updates posted here will show up for both sides.") }}</div>
+    {% endif %}
+    <form method="post" action="{{ url_for('portal.add_comment', project_id=project.id) }}" class="border-t border-slate-100 p-4 dark:border-white/[0.06]">
+      {{ form.hidden_tag() }}
+      {{ form.body(class="field-input", rows=3, placeholder="Ask a question or share an update…") }}
+      <div class="mt-2 flex justify-end"><button type="submit" class="btn-primary">Post</button></div>
+    </form>
+  </div>
+</div>
+{% endblock %}

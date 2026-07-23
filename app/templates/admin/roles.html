@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Roles & Permissions · Admin{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-5xl space-y-6">
+  <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Roles & Permissions</h1>
+  <p class="text-sm text-slate-500 dark:text-slate-400">Rename roles, reorder the hierarchy, and control exactly what each role can do.</p>
+
+  <form method="post" class="card space-y-4 p-6">
+    {{ form.hidden_tag() }}{{ form.id() }}
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div>{{ form.name.label(class="field-label") }}{{ form.name(class="field-input") }}</div>
+      <div>{{ form.hierarchy_level.label(class="field-label") }}{{ form.hierarchy_level(class="field-input") }}</div>
+    </div>
+    <div>{{ form.description.label(class="field-label") }}{{ form.description(class="field-input") }}</div>
+    <div>
+      <p class="field-label">Permissions</p>
+      <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 max-h-72 overflow-y-auto rounded-lg border border-slate-200 p-3 dark:border-slate-800">
+        {% for key, label, description in all_permissions %}
+        <label class="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
+          <input type="checkbox" name="permissions" value="{{ key }}" {{ "checked" if key in (form.permissions.data or []) }} class="mt-0.5">
+          <span><span class="font-medium">{{ label }}</span><br><span class="text-xs text-slate-500">{{ description }}</span></span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="flex justify-end gap-2">
+      {% if form.id.data %}<a href="{{ url_for('admin.roles') }}" class="btn-secondary">Cancel edit</a>{% endif %}
+      <button type="submit" class="btn-primary">Save role</button>
+    </div>
+  </form>
+
+  <div class="card overflow-x-auto">
+    <table class="w-full text-left text-sm">
+      <thead>
+        <tr class="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
+          <th class="px-4 py-2 font-medium">Level</th><th class="px-4 py-2 font-medium">Name</th><th class="px-4 py-2 font-medium">Permissions</th><th class="px-4 py-2 font-medium"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100 dark:divide-white/[0.06]">
+        {% for r in roles %}
+        <tr>
+          <td class="px-4 py-2.5 text-slate-500">{{ r.hierarchy_level }}</td>
+          <td class="px-4 py-2.5 font-medium text-slate-800 dark:text-slate-100">{{ r.name }}</td>
+          <td class="px-4 py-2.5 text-slate-500">{{ (r.permissions or [])|length }} granted</td>
+          <td class="px-4 py-2.5"><a href="{{ url_for('admin.roles', edit_id=r.id) }}" class="text-brand-600 hover:underline dark:text-brand-400">Edit</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

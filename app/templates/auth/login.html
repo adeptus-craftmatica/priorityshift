@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Sign in · PriorityShift{% endblock %}
+{% block guest_content %}
+<div class="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-surface-dark">
+  <div class="w-full max-w-sm">
+    <div class="mb-8 flex flex-col items-center">
+      <div class="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-600 shadow-card">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="white" class="h-6 w-6">
+          <path fill-rule="evenodd" d="M10 2a.75.75 0 01.75.75v.258a33.186 33.186 0 016.668.83.75.75 0 01-.336 1.461 31.28 31.28 0 00-1.03-.21c-.02.375-.048.75-.084 1.124a30.19 30.19 0 01-2.617 9.618A2.25 2.25 0 0111.25 17.5H8.75a2.25 2.25 0 01-2.101-1.669A30.192 30.192 0 014.032 6.213c-.036-.374-.064-.749-.084-1.124-.35.066-.696.14-1.03.21a.75.75 0 11-.336-1.462 33.184 33.184 0 016.668-.829V2.75A.75.75 0 0110 2z" clip-rule="evenodd" />
+        </svg>
+      </div>
+      <h1 class="text-lg font-semibold text-slate-900 dark:text-white">PriorityShift</h1>
+      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Sign in to see your priorities</p>
+    </div>
+
+    <form method="post" class="card space-y-4 p-6">
+      {{ form.hidden_tag() }}
+      <div>
+        {{ form.username.label(class="field-label") }}
+        {{ form.username(class="field-input", autofocus=true, autocomplete="username") }}
+      </div>
+      <div>
+        {{ form.password.label(class="field-label") }}
+        {{ form.password(class="field-input", autocomplete="current-password") }}
+      </div>
+      <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+        {{ form.remember(class="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500") }}
+        {{ form.remember.label.text }}
+      </label>
+      {{ form.submit_button(class="btn-primary w-full") }}
+    </form>
+
+    {% if sso_enabled %}
+    <div class="mt-4 flex items-center gap-3 text-xs text-slate-400">
+      <div class="h-px flex-1 bg-slate-200 dark:bg-white/10"></div>
+      <span>or</span>
+      <div class="h-px flex-1 bg-slate-200 dark:bg-white/10"></div>
+    </div>
+    <a href="{{ url_for('auth.sso_login', next=request.args.get('next')) }}" class="btn-secondary mt-4 w-full">
+      Sign in with {{ sso_provider_name }}
+    </a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

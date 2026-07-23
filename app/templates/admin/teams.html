@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Teams · Admin{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-3xl space-y-6">
+  <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Teams</h1>
+  <form method="post" class="card flex flex-wrap items-end gap-3 p-6">
+    {{ form.hidden_tag() }}{{ form.id() }}
+    <div class="flex-1 min-w-[10rem]">{{ form.name.label(class="field-label") }}{{ form.name(class="field-input") }}</div>
+    <div class="flex-1 min-w-[10rem]">{{ form.description.label(class="field-label") }}{{ form.description(class="field-input") }}</div>
+    <div>{{ form.department_id.label(class="field-label") }}{{ form.department_id(class="field-input") }}</div>
+    {% if form.id.data %}<a href="{{ url_for('admin.teams') }}" class="btn-secondary">Cancel</a>{% endif %}
+    <button type="submit" class="btn-primary">Save</button>
+  </form>
+  <div class="card divide-y divide-slate-100 dark:divide-white/[0.06]">
+    {% for t in teams %}
+    <div class="flex items-center justify-between px-4 py-2.5 text-sm">
+      <a href="{{ url_for('dashboard.team', team_id=t.id) }}" class="font-medium text-slate-800 hover:text-brand-600 dark:text-slate-100 dark:hover:text-brand-400">{{ t.name }}</a>
+      <a href="{{ url_for('admin.teams', edit_id=t.id) }}" class="text-brand-600 hover:underline dark:text-brand-400">Edit</a>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

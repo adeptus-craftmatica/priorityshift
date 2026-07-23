@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import priority_badge, empty_state %}
+{% block title %}Chores · PriorityShift{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-6xl space-y-4">
+  <div class="flex items-center justify-between">
+    <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Chores</h1>
+    {% if current_user.has_permission('create_chore') %}
+    <a href="{{ url_for('chores.create') }}" class="btn-primary">New chore</a>
+    {% endif %}
+  </div>
+
+  <form method="get" class="card flex flex-wrap items-end gap-3 p-4">
+    <div>
+      <label class="field-label">Status</label>
+      <select name="status" class="field-input" onchange="this.form.submit()">
+        <option value="active" {{ 'selected' if status == 'active' }}>Active</option>
+        <option value="paused" {{ 'selected' if status == 'paused' }}>Paused</option>
+        <option value="archived" {{ 'selected' if status == 'archived' }}>Archived</option>
+      </select>
+    </div>
+    <div>
+      <label class="field-label">Priority</label>
+      <select name="priority_id" class="field-input" onchange="this.form.submit()">
+        <option value="">Any</option>
+        {% for p in priority_levels %}<option value="{{ p.id }}" {{ 'selected' if request.args.get('priority_id', type=int) == p.id }}>{{ p.name }}</option>{% endfor %}
+      </select>
+    </div>
+  </form>
+
+  <div class="card">
+    {% if chores %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead>
+          <tr class="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
+            <th class="px-4 py-2 font-medium">#</th>
+            <th class="px-4 py-2 font-medium">Title</th>
+            <th class="px-4 py-2 font-medium">Assigned</th>
+            <th class="px-4 py-2 font-medium">Priority</th>
+            <th class="px-4 py-2 font-medium">Recurrence</th>
+            <th class="px-4 py-2 font-medium">Next due</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 dark:divide-white/[0.06]">
+          {% for c in chores %}
+          <tr class="hover:bg-slate-50 dark:hover:bg-white/[0.03]">
+            <td class="px-4 py-2.5 font-mono text-xs text-slate-400">{{ c.chore_number }}</td>
+            <td class="px-4 py-2.5"><a href="{{ url_for('chores.detail', chore_id=c.id) }}" class="font-medium text-slate-800 hover:text-brand-600 dark:text-slate-100 dark:hover:text-brand-400">{{ c.title }}</a></td>
+            <td class="px-4 py-2.5 text-slate-600 dark:text-slate-300">{{ c.assigned_user.full_name if c.assigned_user else (c.assigned_team.name if c.assigned_team else "—") }}</td>
+            <td class="px-4 py-2.5">{{ priority_badge(c.priority_level) }}</td>
+            <td class="px-4 py-2.5 text-slate-600 dark:text-slate-300 capitalize">{{ c.recurrence_type|replace('_', ' ') }}</td>
+            <td class="px-4 py-2.5 {{ 'font-medium text-rose-600 dark:text-rose-400' if c.next_scheduled_at and c.next_scheduled_at < now }}">
+              {{ c.next_scheduled_at.strftime('%b %-d, %Y') if c.next_scheduled_at else "—" }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      {{ empty_state("No chores", "Create one to start tracking recurring work.") }}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

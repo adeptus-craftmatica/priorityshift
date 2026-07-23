@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import tag_pill %}
+{% block title %}Tags · Admin{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-3xl space-y-6">
+  <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Tags</h1>
+  <form method="post" class="card flex flex-wrap items-end gap-3 p-6">
+    {{ form.hidden_tag() }}{{ form.id() }}
+    <div>{{ form.name.label(class="field-label") }}{{ form.name(class="field-input") }}</div>
+    <div>{{ form.color.label(class="field-label") }}{{ form.color(class="field-input", type="color") }}</div>
+    {% if form.id.data %}<a href="{{ url_for('admin.tags') }}" class="btn-secondary">Cancel</a>{% endif %}
+    <button type="submit" class="btn-primary">Save</button>
+  </form>
+  <div class="card flex flex-wrap gap-2 p-4">
+    {% for t in tags %}
+    <a href="{{ url_for('admin.tags', edit_id=t.id) }}">{{ tag_pill(t) }}</a>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

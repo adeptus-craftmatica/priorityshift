@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import priority_badge, stat_tile, avatar, empty_state %}
+{% block title %}Organization Dashboard · PriorityShift{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-7xl space-y-6">
+  <div>
+    <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Organization Dashboard</h1>
+    <p class="text-sm text-slate-500 dark:text-slate-400">A single view of what everyone is working on, and the org's overall load.</p>
+  </div>
+
+  <div class="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-8">
+    {{ stat_tile("Active projects", totals.total_active_projects) }}
+    {{ stat_tile("Active chores", totals.total_active_chores) }}
+    {{ stat_tile("Overdue", totals.overdue_count, tone="danger" if totals.overdue_count else "default") }}
+    {{ stat_tile("Due this week", totals.due_this_week_count, tone="warning" if totals.due_this_week_count else "default") }}
+    {{ stat_tile("At risk", totals.at_risk_count, tone="warning" if totals.at_risk_count else "default") }}
+    {{ stat_tile("Off track", totals.off_track_count, tone="danger" if totals.off_track_count else "default") }}
+    {{ stat_tile("Blocked", totals.blocked_count, tone="danger" if totals.blocked_count else "default") }}
+    {{ stat_tile("Chores due soon", totals.chores_due_soon_count) }}
+  </div>
+
+  <div class="card p-4">
+    <h2 class="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-100">Active projects by priority</h2>
+    <div class="flex flex-wrap gap-2">
+      {% for name, count in totals.by_priority.items() %}
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+          {{ name }} <span class="font-semibold">{{ count }}</span>
+        </span>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="border-b border-slate-100 px-5 py-4 dark:border-white/[0.06]">
+      <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-100">Everyone's #1 priority</h2>
+    </div>
+    {% if rows %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead>
+          <tr class="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
+            <th class="px-4 py-2 font-medium">Person</th>
+            <th class="px-4 py-2 font-medium">#1 Priority</th>
+            <th class="px-4 py-2 font-medium">Priority level</th>
+            <th class="px-4 py-2 font-medium">Due</th>
+            <th class="px-4 py-2 font-medium">Queue size</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 dark:divide-white/[0.06]">
+          {% for row in rows %}
+          <tr class="hover:bg-slate-50 dark:hover:bg-white/[0.03]">
+            <td class="px-4 py-2.5">
+              <a href="{{ url_for('dashboard.personal', user_id=row.user.id) }}" class="flex items-center gap-2.5">
+                {{ avatar(row.user, size=7) }}
+                <div>
+                  <p class="font-medium text-slate-800 dark:text-slate-100">{{ row.user.full_name }}</p>
+                  <p class="text-xs text-slate-500 dark:text-slate-400">{{ row.user.role.name }}</p>
+                </div>
+              </a>
+            </td>
+            {% if row.top_item %}
+              {% set obj = row.top_item.obj %}
+              <td class="px-4 py-2.5">
+                <a href="{{ url_for('projects.detail', project_id=obj.id) if row.top_item.type == 'project' else url_for('chores.detail', chore_id=obj.id) }}"
+                   class="text-slate-700 hover:text-brand-600 dark:text-slate-200 dark:hover:text-brand-400">
+                  {{ row.top_item.number }} · {{ row.top_item.title }}
+                </a>
+              </td>
+              <td class="px-4 py-2.5">{{ priority_badge(row.top_item.priority) }}</td>
+              <td class="px-4 py-2.5 {{ 'font-medium text-rose-600 dark:text-rose-400' if row.top_item.is_overdue }}">
+                {{ row.top_item.due_date.strftime('%b %-d') if row.top_item.due_date else "—" }}
+              </td>
+            {% else %}
+              <td class="px-4 py-2.5 text-slate-400" colspan="3">Nothing assigned</td>
+            {% endif %}
+            <td class="px-4 py-2.5 text-slate-500 dark:text-slate-400">{{ row.queue_length }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      {{ empty_state("No active users", "Add users in Admin to see them here.") }}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

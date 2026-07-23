@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Verify · PriorityShift{% endblock %}
+{% block guest_content %}
+<div class="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-surface-dark">
+  <div class="w-full max-w-sm">
+    <div class="mb-8 flex flex-col items-center">
+      <div class="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-600 shadow-card">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="white" class="h-6 w-6">
+          <path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd" />
+        </svg>
+      </div>
+      <h1 class="text-lg font-semibold text-slate-900 dark:text-white">Two-factor verification</h1>
+      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Enter the 6-digit code from your authenticator app</p>
+    </div>
+
+    <form method="post" class="card space-y-4 p-6">
+      {{ form.hidden_tag() }}
+      <div>
+        {{ form.code.label(class="field-label") }}
+        {{ form.code(class="field-input text-center text-lg tracking-[0.5em]", autofocus=true, autocomplete="one-time-code", inputmode="numeric", maxlength=6) }}
+      </div>
+      {{ form.submit_button(class="btn-primary w-full") }}
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import stat_tile, empty_state %}
+{% block title %}Workload Forecast · PriorityShift{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-5xl space-y-6">
+  <div class="flex items-center justify-between">
+    <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Workload Forecast</h1>
+  </div>
+
+  <form method="get" class="card mb-4 flex flex-wrap items-end gap-3 p-4">
+    <div>
+      <label class="field-label">Weeks ahead</label>
+      <select name="weeks" class="field-input">
+        {% for n in [4, 8, 12] %}
+        <option value="{{ n }}" {{ "selected" if weeks_ahead == n }}>{{ n }} weeks</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn-secondary">Update</button>
+    <div class="ml-auto flex items-center gap-2">
+      <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Export</span>
+      <a href="{{ url_for('reports.workload_forecast', weeks=weeks_ahead, export='csv') }}" class="btn-secondary">CSV</a>
+      <a href="{{ url_for('reports.workload_forecast', weeks=weeks_ahead, export='xlsx') }}" class="btn-secondary">Excel</a>
+      <a href="{{ url_for('reports.workload_forecast', weeks=weeks_ahead, export='pdf') }}" class="btn-secondary">PDF</a>
+    </div>
+  </form>
+
+  <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
+    {{ stat_tile("Developers tracked", data.developer_forecasts|length) }}
+    {{ stat_tile("At risk of overload", data.at_risk|length, tone="danger" if data.at_risk else "default") }}
+    {{ stat_tile("Weeks forecasted", weeks_ahead) }}
+  </div>
+
+  <div class="card">
+    <div class="panel-header"><h3 class="panel-title">Org-wide projected load vs. capacity</h3></div>
+    <canvas id="forecastChart" class="p-4" height="110"></canvas>
+  </div>
+
+  <div class="card">
+    <div class="panel-header"><h3 class="panel-title">At-risk developers</h3></div>
+    {% if data.at_risk %}
+    <table class="table-refined">
+      <thead><tr><th>Developer</th><th>Effective capacity</th><th>Weeks of backlog</th><th>Overloaded weeks</th></tr></thead>
+      <tbody>
+        {% for f in data.at_risk %}
+        <tr>
+          <td class="font-medium text-slate-800 dark:text-slate-100">{{ f.user.full_name }}</td>
+          <td>{{ f.effective_capacity_per_week }}h/wk</td>
+          <td class="{{ 'font-semibold text-rose-600 dark:text-rose-400' if f.weeks_of_backlog > weeks_ahead else '' }}">{{ f.weeks_of_backlog }}</td>
+          <td>{{ f.overloaded_week_count }} / {{ weeks_ahead }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <div class="p-5">{{ empty_state("No one is projected to be overloaded", "Everyone's committed work fits within their effective capacity over this window.") }}</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/chart.umd.js') }}"></script>
+<script>
+  const ctx = document.getElementById('forecastChart');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: {{ data.org_weeks|map(attribute='week_start')|map('string')|list|tojson }},
+      datasets: [
+        { label: 'Projected hours', data: {{ data.org_weeks|map(attribute='total_hours')|list|tojson }}, backgroundColor: '#6366f1' },
+        { label: 'Capacity', data: {{ data.org_weeks|map(attribute='capacity')|list|tojson }}, type: 'line', borderColor: '#f43f5e', backgroundColor: 'transparent', tension: 0.2 },
+      ]
+    },
+    options: { responsive: true, plugins: { legend: { display: true } } }
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,65 @@
+{% from "macros/ui.html" import priority_badge %}
+<div class="flex gap-4 overflow-x-auto pb-2" id="kanban-board">
+  {% for phase in phases %}
+  <div class="w-72 shrink-0">
+    <div class="mb-2 flex items-center justify-between px-1">
+      <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-200">{{ phase.name }}</h3>
+      <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500 dark:bg-white/[0.06] dark:text-slate-400">{{ projects_by_phase.get(phase.id, [])|length }}</span>
+    </div>
+    <div class="board-column min-h-[200px] space-y-2 rounded-xl bg-slate-100/60 p-2 dark:bg-white/[0.02]" data-phase-id="{{ phase.id }}">
+      {% for p in projects_by_phase.get(phase.id, []) %}
+      <div class="board-card card-hoverable cursor-grab p-3 text-sm active:cursor-grabbing" draggable="true" data-project-id="{{ p.id }}">
+        <a href="{{ url_for('projects.detail', project_id=p.id) }}" class="font-medium text-slate-800 hover:text-brand-600 dark:text-slate-100 dark:hover:text-brand-400">{{ p.title }}</a>
+        <p class="mt-0.5 font-mono text-xs text-slate-400">{{ p.project_number }}</p>
+        <div class="mt-2 flex items-center justify-between">
+          {{ priority_badge(p.priority_level) }}
+          {% if p.target_deadline %}<span class="text-xs text-slate-500 dark:text-slate-400">{{ p.target_deadline.strftime('%b %-d') }}</span>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<script>
+(function () {
+  const board = document.getElementById('kanban-board');
+  if (!board || board.dataset.wired) return;
+  board.dataset.wired = '1';
+  let draggedCard = null;
+
+  board.addEventListener('dragstart', (e) => {
+    const card = e.target.closest('.board-card');
+    if (!card) return;
+    draggedCard = card;
+    e.dataTransfer.effectAllowed = 'move';
+  });
+
+  board.querySelectorAll('.board-column').forEach((column) => {
+    column.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    });
+    column.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (!draggedCard) return;
+      const projectId = draggedCard.dataset.projectId;
+      const phaseId = column.dataset.phaseId;
+      const originColumn = draggedCard.parentElement;
+      if (originColumn === column) return;
+      column.appendChild(draggedCard);
+
+      const csrf = document.querySelector('meta[name="csrf-token"]')?.content
+        || document.querySelector('input[name="csrf_token"]')?.value;
+      fetch(`/projects/${projectId}/phase-ajax`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': csrf },
+        body: `phase_id=${encodeURIComponent(phaseId)}&csrf_token=${encodeURIComponent(csrf || '')}`,
+      }).then((res) => {
+        if (!res.ok) { originColumn.appendChild(draggedCard); }
+      }).catch(() => { originColumn.appendChild(draggedCard); });
+    });
+  });
+})();
+</script>

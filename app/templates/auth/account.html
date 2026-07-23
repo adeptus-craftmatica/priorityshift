@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Account · PriorityShift{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-2xl space-y-6">
+  <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Account</h1>
+
+  <div class="card p-5">
+    <h3 class="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-100">Profile</h3>
+    <dl class="space-y-2 text-sm">
+      <div class="flex justify-between"><dt class="text-slate-500">Name</dt><dd class="text-slate-800 dark:text-slate-100">{{ current_user.full_name }}</dd></div>
+      <div class="flex justify-between"><dt class="text-slate-500">Username</dt><dd class="text-slate-800 dark:text-slate-100">{{ current_user.username }}</dd></div>
+      <div class="flex justify-between"><dt class="text-slate-500">Email</dt><dd class="text-slate-800 dark:text-slate-100">{{ current_user.email }}</dd></div>
+      <div class="flex justify-between"><dt class="text-slate-500">Role</dt><dd class="text-slate-800 dark:text-slate-100">{{ current_user.role.name if current_user.role else "—" }}</dd></div>
+    </dl>
+  </div>
+
+  <div class="card p-5">
+    <div class="flex items-center justify-between">
+      <div>
+        <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-100">Two-factor authentication</h3>
+        <p class="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+          {% if current_user.mfa_enabled %}Enabled — a code from your authenticator app is required at sign-in.
+          {% else %}Optional. Not required to use PriorityShift, but available if you want it.{% endif %}
+        </p>
+      </div>
+      {% if current_user.mfa_enabled %}
+        <span class="shrink-0 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">Enabled</span>
+      {% else %}
+        <span class="shrink-0 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500 dark:bg-white/[0.06] dark:text-slate-400">Off</span>
+      {% endif %}
+    </div>
+
+    {% if current_user.mfa_enabled %}
+    <form method="post" action="{{ url_for('auth.mfa_disable') }}" class="mt-4 flex items-end gap-3">
+      {{ disable_form.hidden_tag() }}
+      <div class="flex-1">
+        {{ disable_form.password.label(class="field-label") }}
+        {{ disable_form.password(class="field-input", autocomplete="current-password") }}
+      </div>
+      {{ disable_form.submit_button(class="btn-danger") }}
+    </form>
+    {% else %}
+    <form method="post" action="{{ url_for('auth.mfa_enable') }}" class="mt-4">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn-primary">Enable two-factor authentication</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

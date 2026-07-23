@@ -1,0 +1,92 @@
+{# Shared UI primitives so every page composes from the same building blocks
+   instead of ad-hoc markup. #}
+
+{% macro priority_badge(priority_level, size="sm") -%}
+  {%- if priority_level -%}
+    {%- set cls = "priority-" ~ priority_level.name|lower|replace(" ", "_") -%}
+    <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-semibold {{ cls }} {{ 'text-xs' if size == 'sm' else 'text-sm' }}">
+      <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-current"></span>
+      {{ priority_level.name }}
+    </span>
+  {%- else -%}
+    <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400">No priority</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro health_badge(status, label=None) -%}
+  {%- set icons = {
+    "on_track": '<path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />',
+    "at_risk": '<path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />',
+    "off_track": '<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />'
+  } -%}
+  {%- set labels = {"on_track": "Yes — On Track", "at_risk": "Maybe — At Risk", "off_track": "No — Off Track"} -%}
+  <span class="inline-flex items-center gap-1.5 text-xs font-semibold health-{{ status }}">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-3.5 w-3.5">{{ (icons[status] or icons["at_risk"])|safe }}</svg>
+    {{ label or labels.get(status, status) }}
+  </span>
+{%- endmacro %}
+
+{% macro stat_tile(label, value, sub=None, tone="default", icon=None) -%}
+  {%- set tones = {
+    "default": "text-slate-900 dark:text-white",
+    "danger": "text-rose-600 dark:text-rose-400",
+    "warning": "text-amber-600 dark:text-amber-400",
+    "success": "text-emerald-600 dark:text-emerald-400",
+  } -%}
+  {%- set chip_tones = {
+    "default": "bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400",
+    "danger": "bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400",
+    "warning": "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400",
+    "success": "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400",
+  } -%}
+  <div class="stat-tile">
+    <div class="flex items-center justify-between">
+      <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ label }}</p>
+      {% if icon %}
+      <span class="flex h-7 w-7 items-center justify-center rounded-lg {{ chip_tones.get(tone, chip_tones['default']) }}">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4">{{ icon|safe }}</svg>
+      </span>
+      {% endif %}
+    </div>
+    <p class="mt-2.5 text-3xl font-bold tabular-nums {{ tones.get(tone, tones['default']) }}">{{ value }}</p>
+    {% if sub %}<p class="mt-1.5 text-xs text-slate-500 dark:text-slate-400">{{ sub }}</p>{% endif %}
+  </div>
+{%- endmacro %}
+
+{% macro avatar(user, size=8) -%}
+  {%- if user -%}
+    {#- h-{{size}}/w-{{size}} is a Tailwind spacing value, i.e. size*0.25rem
+       across — font-size needs to be a fraction of THAT, not of `size`
+       itself, or the initials blow way past the edges of the circle. -#}
+    <div class="inline-flex h-{{ size }} w-{{ size }} shrink-0 items-center justify-center overflow-hidden rounded-full text-white font-semibold leading-none ring-2 ring-white dark:ring-surface-dark-subtle"
+         style="background-color: {{ user.avatar_color or '#6366f1' }}; font-size: {{ (size * 0.1)|round(2) }}rem;"
+         title="{{ user.full_name }}">
+      {{ user.initials }}
+    </div>
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro empty_state(title, message, icon="inbox") -%}
+  <div class="flex flex-col items-center justify-center py-14 px-4 text-center">
+    <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 dark:bg-white/[0.04]">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-7 w-7 text-slate-400">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5h18M3 12h18M3 16.5h18" />
+      </svg>
+    </div>
+    <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">{{ title }}</p>
+    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ message }}</p>
+  </div>
+{%- endmacro %}
+
+{% macro tag_pill(tag) -%}
+  <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold" style="background-color: {{ tag.color }}1a; color: {{ tag.color }};">{{ tag.name }}</span>
+{%- endmacro %}
+
+{% macro reprioritization_tally(count, item_url) -%}
+  <a href="{{ item_url }}#history" class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-brand-50 hover:text-brand-700 dark:bg-white/[0.06] dark:text-slate-300 dark:hover:bg-brand-500/10 dark:hover:text-brand-300">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-3.5 w-3.5">
+      <path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39zm1.23-3.723a.75.75 0 00.219-.53V2.929a.75.75 0 00-1.5 0V5.36l-.31-.31A7 7 0 003.239 8.188a.75.75 0 101.448.389A5.5 5.5 0 0113.89 6.11l.311.31h-2.432a.75.75 0 000 1.5h4.243a.75.75 0 00.53-.219z" clip-rule="evenodd" />
+    </svg>
+    Reprioritized: {{ count }} time{{ 's' if count != 1 else '' }}
+  </a>
+{%- endmacro %}

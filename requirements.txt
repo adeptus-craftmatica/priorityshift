@@ -1,0 +1,14 @@
+Flask==3.1.0
+Flask-SQLAlchemy==3.1.1
+Flask-Migrate==4.0.7
+Flask-Login==0.6.3
+Flask-WTF==1.2.2
+WTForms==3.2.1
+email-validator==2.2.0
+python-dotenv==1.0.1
+Flask-APScheduler==1.13.1
+PySide6==6.11.1
+reportlab==5.0.0
+openpyxl==3.1.5
+pyotp==2.10.0
+Authlib==1.7.2

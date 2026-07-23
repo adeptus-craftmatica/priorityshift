@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import stat_tile %}
+{% block title %}Admin · PriorityShift{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-5xl space-y-6">
+  <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Admin</h1>
+
+  <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+    {{ stat_tile("Users", counts.users) }}
+    {{ stat_tile("Projects", counts.projects) }}
+    {{ stat_tile("Chores", counts.chores) }}
+    {{ stat_tile("Ideas", counts.ideas) }}
+  </div>
+
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    {% for endpoint, label, count in [
+      ("admin.users", "Users", counts.users),
+      ("admin.roles", "Roles & Permissions", counts.roles),
+      ("admin.departments", "Departments", counts.departments),
+      ("admin.teams", "Teams", counts.teams),
+      ("admin.priority_levels", "Priority Levels", counts.priority_levels),
+      ("admin.phases", "Project Phases", counts.phases),
+      ("admin.workflow_rules", "Workflow Rules", counts.workflow_rules),
+      ("admin.tags", "Tags", counts.tags),
+      ("admin.clients", "Clients", counts.clients),
+    ] %}
+    <a href="{{ url_for(endpoint) }}" class="card flex items-center justify-between p-4 hover:shadow-card-hover">
+      <span class="font-medium text-slate-800 dark:text-slate-100">{{ label }}</span>
+      <span class="text-sm text-slate-400">{{ count }}</span>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

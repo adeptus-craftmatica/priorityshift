@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}{{ req.request_number }} · PriorityShift{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-3xl space-y-6">
+  <div>
+    <p class="font-mono text-xs text-slate-400">{{ req.request_number }}</p>
+    <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ req.title }}</h1>
+    <span class="mt-2 inline-block rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">{{ req.status|replace('_',' ')|title }}</span>
+  </div>
+
+  <div class="card p-4 space-y-3">
+    <div><h4 class="text-xs font-semibold uppercase text-slate-500">Description</h4><p class="text-sm text-slate-600 dark:text-slate-300">{{ req.description or "—" }}</p></div>
+    <div><h4 class="text-xs font-semibold uppercase text-slate-500">Business need</h4><p class="text-sm text-slate-600 dark:text-slate-300">{{ req.business_need or "—" }}</p></div>
+    <div><h4 class="text-xs font-semibold uppercase text-slate-500">Estimated impact</h4><p class="text-sm text-slate-600 dark:text-slate-300">{{ req.estimated_business_impact or "—" }}</p></div>
+    <dl class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
+      <div><dt class="text-xs text-slate-500">Requested by</dt><dd class="text-slate-700 dark:text-slate-200">{{ req.requested_by.full_name if req.requested_by }}</dd></div>
+      <div><dt class="text-xs text-slate-500">Department</dt><dd class="text-slate-700 dark:text-slate-200">{{ req.requesting_department.name if req.requesting_department else "—" }}</dd></div>
+      <div><dt class="text-xs text-slate-500">Desired completion</dt><dd class="text-slate-700 dark:text-slate-200">{{ req.desired_completion_date.strftime('%b %-d, %Y') if req.desired_completion_date else "—" }}</dd></div>
+      <div><dt class="text-xs text-slate-500">Requested priority</dt><dd class="text-slate-700 dark:text-slate-200">{{ req.requested_priority.name if req.requested_priority else "—" }}</dd></div>
+      <div><dt class="text-xs text-slate-500">Client / Paid</dt><dd class="text-slate-700 dark:text-slate-200">{{ "Client" if req.is_client else "Internal" }} · {{ "Paid" if req.is_paid else "Unpaid" }}</dd></div>
+    </dl>
+  </div>
+
+  {% if current_user.has_permission('review_requests') and req.status in ['new', 'needs_clarification'] %}
+  <div class="card p-4">
+    <h3 class="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-100">Review this request</h3>
+    <form method="post" action="{{ url_for('requests.decide', request_id=req.id) }}" class="mb-3">
+      {{ decision_form.hidden_tag() }}
+      {{ decision_form.decision_notes(class="field-input mb-3", rows=2, placeholder="Notes for this decision") }}
+      <div class="flex flex-wrap gap-2">
+        {% for action, label, cls in [("accepted","Accept","btn-primary"), ("rejected","Reject","btn-danger"), ("needs_clarification","Request clarification","btn-secondary"), ("scheduled","Schedule for later","btn-secondary"), ("escalated","Escalate","btn-secondary")] %}
+        <button type="submit" name="action" value="{{ action }}" class="{{ cls }}">{{ label }}</button>
+        {% endfor %}
+      </div>
+    </form>
+    <div class="flex flex-wrap gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+      <form method="post" action="{{ url_for('requests.convert_to_project', request_id=req.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn-secondary">Convert to project</button>
+      </form>
+      <form method="post" action="{{ url_for('requests.convert_to_chore', request_id=req.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn-secondary">Convert to chore</button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if req.decision_notes %}
+  <div class="card p-4">
+    <h3 class="mb-1 text-sm font-semibold text-slate-800 dark:text-slate-100">Decision notes</h3>
+    <p class="text-sm text-slate-600 dark:text-slate-300">{{ req.decision_notes }}</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

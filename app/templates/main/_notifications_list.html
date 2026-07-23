@@ -1,0 +1,21 @@
+{% from "macros/ui.html" import empty_state %}
+{% if items %}
+<div class="divide-y divide-slate-100 dark:divide-white/[0.06]">
+  {% for n in items %}
+  <div class="flex items-start gap-3 px-2 py-3 {{ 'bg-brand-50/50 dark:bg-brand-950/20' if not n.is_read }}">
+    <div class="mt-1 h-2 w-2 shrink-0 rounded-full {{ 'bg-brand-500' if not n.is_read else 'bg-transparent' }}"></div>
+    <div class="min-w-0 flex-1">
+      <p class="text-sm font-medium text-slate-800 dark:text-slate-100">{{ n.title }}</p>
+      {% if n.body %}<p class="text-xs text-slate-500 dark:text-slate-400">{{ n.body }}</p>{% endif %}
+      <p class="mt-0.5 text-[11px] text-slate-400">{{ n.created_at.strftime('%b %-d, %Y %-I:%M %p') }}</p>
+    </div>
+    {% if not n.is_read %}
+    <button hx-post="{{ url_for('main.mark_notification_read', notification_id=n.id) }}" hx-swap="outerHTML" hx-target="closest div.flex"
+            class="shrink-0 text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">Mark read</button>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+  {{ empty_state("No notifications", "You're all caught up.") }}
+{% endif %}

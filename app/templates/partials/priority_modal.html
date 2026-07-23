@@ -1,0 +1,68 @@
+<div x-data="{ open: true }" x-show="open" x-cloak @keydown.escape.window="open = false" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div class="fixed inset-0 bg-slate-900/50" @click="open = false"></div>
+  <div class="relative w-full max-w-lg card max-h-[90vh] overflow-y-auto p-6">
+    <div class="mb-4 flex items-center justify-between">
+      <h2 class="text-base font-semibold text-slate-900 dark:text-white">Change priority — {{ item.title }}</h2>
+      <button @click="open = false" class="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>
+      </button>
+    </div>
+
+    <form method="post" action="{{ url_for('priority.change', item_type=item_type, item_id=item.id) }}" class="space-y-4">
+      {{ form.hidden_tag() }}
+      <div>
+        <p class="field-label">Current priority</p>
+        {% from "macros/ui.html" import priority_badge %}
+        {{ priority_badge(item.priority_level) }}
+      </div>
+      <div>
+        {{ form.new_priority_level_id.label(class="field-label") }}
+        {{ form.new_priority_level_id(class="field-input", id="new_priority_level_id",
+             **{"hx-get": url_for('priority.impact', item_type=item_type, item_id=item.id),
+                "hx-target": "#impact-preview", "hx-trigger": "change, load"}) }}
+      </div>
+
+      <div id="impact-preview" class="rounded-lg bg-slate-50 p-3 text-sm text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
+        Select a new priority to see the impact.
+      </div>
+
+      <div>
+        {{ form.reason.label(class="field-label") }}
+        {{ form.reason(class="field-input", rows=2) }}
+      </div>
+      <div>
+        {{ form.business_justification.label(class="field-label") }}
+        {{ form.business_justification(class="field-input", rows=2) }}
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          {{ form.expected_interruption_minutes.label(class="field-label") }}
+          {{ form.expected_interruption_minutes(class="field-input") }}
+        </div>
+        <div>
+          {{ form.resume_date.label(class="field-label") }}
+          {{ form.resume_date(class="field-input") }}
+        </div>
+      </div>
+      <label class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+        {{ form.is_temporary() }} {{ form.is_temporary.label.text }}
+      </label>
+
+      {% if current_user.has_permission('approve_priority_change') %}
+      <label class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+        {{ form.override_blocks() }} {{ form.override_blocks.label.text }}
+      </label>
+      {% endif %}
+
+      <label class="flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-950/40 dark:text-amber-300">
+        {{ form.acknowledged(class="mt-0.5") }}
+        <span>{{ form.acknowledged.label.text }}</span>
+      </label>
+
+      <div class="flex justify-end gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
+        <button type="button" @click="open = false" class="btn-secondary">Cancel</button>
+        <button type="submit" class="btn-primary">Confirm priority change</button>
+      </div>
+    </form>
+  </div>
+</div>

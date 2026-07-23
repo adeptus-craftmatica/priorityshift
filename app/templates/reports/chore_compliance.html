@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import stat_tile, empty_state %}
+{% block title %}Chore Compliance Report · PriorityShift{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-5xl space-y-6">
+  <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Chore Compliance Report</h1>
+  {% include "reports/_filter_bar.html" %}
+
+  <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+    {{ stat_tile("Compliance rate", (data.compliance_rate ~ "%") if data.compliance_rate is not none else "—", tone="danger" if data.compliance_rate is not none and data.compliance_rate < 80 else "default") }}
+    {{ stat_tile("On time", data.on_time_count) }}
+    {{ stat_tile("Late", data.late_count, tone="warning" if data.late_count else "default") }}
+    {{ stat_tile("Missed", data.missed_count, tone="danger" if data.missed_count else "default") }}
+  </div>
+
+  <div class="card">
+    <div class="panel-header"><h3 class="panel-title">Compliance by assignee</h3></div>
+    {% if data.by_user %}
+    <table class="table-refined">
+      <thead><tr><th>Assignee</th><th>On time</th><th>Total due</th><th>Rate</th></tr></thead>
+      <tbody>
+        {% for row in data.by_user %}
+        <tr>
+          <td class="font-medium text-slate-800 dark:text-slate-100">{{ row.user }}</td>
+          <td>{{ row.on_time }}</td>
+          <td>{{ row.total }}</td>
+          <td class="{{ 'font-semibold text-rose-600 dark:text-rose-400' if row.rate < 80 else 'text-slate-600 dark:text-slate-300' }}">{{ row.rate }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <div class="p-5">{{ empty_state("Nothing due yet", "No chore occurrences have come due in this window.") }}</div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="panel-header"><h3 class="panel-title">Late or missed occurrences</h3></div>
+    {% if data.occurrences %}
+    <table class="table-refined">
+      <thead><tr><th>Due date</th><th>Chore</th><th>Assignee</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for o in data.occurrences %}
+        <tr>
+          <td>{{ o.occurrence_date.strftime('%b %-d, %Y') }}</td>
+          <td class="font-medium text-slate-800 dark:text-slate-100">{{ o.chore.title if o.chore else "—" }}</td>
+          <td>{{ o.chore.assigned_user.full_name if o.chore and o.chore.assigned_user else "Unassigned" }}</td>
+          <td>
+            <span class="{{ 'priority-critical' if o.status in ('pending', 'escalated') else 'priority-urgent' }} inline-flex rounded-full px-2 py-0.5 text-xs font-medium">
+              {{ "Missed" if o.status in ('pending', 'escalated') else "Late" }}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <div class="p-5">{{ empty_state("Everything's on time", "No late or missed chore occurrences in this window.") }}</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

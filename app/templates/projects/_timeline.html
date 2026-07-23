@@ -1,0 +1,29 @@
+{% from "macros/ui.html" import priority_badge, empty_state %}
+<div class="card p-4">
+  <div class="mb-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+    <span>{{ timeline_window_start.strftime('%b %-d, %Y') }}</span>
+    <span>Today</span>
+    <span>{{ timeline_window_end.strftime('%b %-d, %Y') }}</span>
+  </div>
+  {% set total_days = (timeline_window_end - timeline_window_start).days %}
+  {% set today_pct = ((now - timeline_window_start).days / total_days * 100)|round(2) %}
+  {% if timeline_rows %}
+  <div class="relative space-y-2">
+    <div class="pointer-events-none absolute inset-y-0 border-l-2 border-dashed border-brand-400/60" style="left: {{ today_pct }}%;"></div>
+    {% set bar_colors = {"critical": "#e11d48", "urgent": "#ea580c", "high": "#d97706"} %}
+    {% for row in timeline_rows %}
+    {% set bar_color = bar_colors.get(row.project.priority_level.name|lower, "#6366f1") if row.project.priority_level else "#6366f1" %}
+    <div class="relative h-10">
+      <a href="{{ url_for('projects.detail', project_id=row.project.id) }}"
+         class="absolute top-0 flex h-8 items-center gap-2 overflow-hidden rounded-lg px-2.5 text-xs font-medium text-white shadow-sm transition-opacity hover:opacity-90"
+         style="left: {{ row.left_pct }}%; width: {{ row.width_pct }}%; background-color: {{ bar_color }};"
+         title="{{ row.project.project_number }} · {{ row.project.title }}">
+        <span class="truncate">{{ row.project.project_number }} · {{ row.project.title }}</span>
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+    {{ empty_state("Nothing in this window", "No filtered projects have both a start and target date inside the current 16-week window.") }}
+  {% endif %}
+</div>

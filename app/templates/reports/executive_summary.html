@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import stat_tile, empty_state %}
+{% block title %}Executive Summary · PriorityShift{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-5xl space-y-6">
+  <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Executive Summary</h1>
+
+  <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+    {{ stat_tile("Critical priorities", data.critical_projects|length, tone="danger" if data.critical_projects else "default") }}
+    {{ stat_tile("At risk", data.at_risk|length, tone="warning" if data.at_risk else "default") }}
+    {{ stat_tile("Off track", data.off_track|length, tone="danger" if data.off_track else "default") }}
+    {{ stat_tile("Blocked", data.blocked|length, tone="danger" if data.blocked else "default") }}
+  </div>
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    {{ stat_tile("Unplanned hours this week", data.unplanned_hours_this_week, tone="warning" if data.unplanned_hours_this_week else "default") }}
+    {{ stat_tile("Priority overrides this week", data.recent_overrides|length) }}
+  </div>
+
+  <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+    <div class="card">
+      <div class="border-b border-slate-100 px-5 py-4 dark:border-white/[0.06]"><h3 class="text-sm font-semibold text-slate-800 dark:text-slate-100">Delivery risks needing attention</h3></div>
+      {% set risk_items = (data.off_track + data.blocked)|unique(attribute='id')|list %}
+      {% if risk_items %}
+      <div class="divide-y divide-slate-100 dark:divide-white/[0.06]">
+        {% for p in risk_items %}
+        <a href="{{ url_for('projects.detail', project_id=p.id) }}" class="flex items-center justify-between px-4 py-2.5 text-sm hover:bg-slate-50 dark:hover:bg-white/[0.03]">
+          <span class="text-slate-700 dark:text-slate-200">{{ p.project_number }} · {{ p.title }}</span>
+          <span class="text-xs text-slate-500">{{ p.target_deadline.strftime('%b %-d') if p.target_deadline else "—" }}</span>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}{{ empty_state("No major risks flagged", "") }}{% endif %}
+    </div>
+
+    <div class="card">
+      <div class="border-b border-slate-100 px-5 py-4 dark:border-white/[0.06]"><h3 class="text-sm font-semibold text-slate-800 dark:text-slate-100">Recent priority overrides</h3></div>
+      {% if data.recent_overrides %}
+      <div class="divide-y divide-slate-100 dark:divide-white/[0.06]">
+        {% for e in data.recent_overrides %}
+        <div class="px-4 py-2.5 text-sm">
+          <p class="text-slate-700 dark:text-slate-200">{{ e.item_type|capitalize }} #{{ e.item_id }} → {{ e.new_priority_level.name if e.new_priority_level }}</p>
+          <p class="text-xs text-slate-500">{{ e.requested_by.full_name if e.requested_by else "System" }} · {{ e.reason }}</p>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}{{ empty_state("No recent overrides", "") }}{% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

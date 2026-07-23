@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Search · PriorityShift{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-3xl">
+  <h1 class="mb-4 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+    {% if q %}Results for "{{ q }}"{% else %}Search{% endif %}
+  </h1>
+  {% include "main/_search_results.html" %}
+</div>
+{% endblock %}

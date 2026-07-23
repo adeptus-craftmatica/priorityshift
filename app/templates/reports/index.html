@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Reports · PriorityShift{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-4xl space-y-6">
+  <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Reports</h1>
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    {% for endpoint, title, desc in [
+      ("reports.priority_changes", "Priority Change Report", "Who reprioritized what, how often, and why."),
+      ("reports.deadline_impact", "Deadline Impact Report", "Which deadlines moved, and how much time was lost."),
+      ("reports.workload", "Workload Report", "Hours by developer, planned vs. unplanned, client vs. internal."),
+      ("reports.interruptions", "Interruption Report", "How much time is lost to context switching and emergency work."),
+      ("reports.chore_compliance", "Chore Compliance Report", "Which recurring chores are completed on time, and who's falling behind."),
+      ("reports.workload_forecast", "Workload Forecast", "Projected load vs. capacity over the coming weeks, and who's at risk of overload."),
+      ("reports.executive", "Executive Summary", "Current risks and decisions needing leadership attention."),
+    ] %}
+    <a href="{{ url_for(endpoint) }}" class="card block p-5 hover:shadow-card-hover">
+      <h3 class="font-medium text-slate-800 dark:text-slate-100">{{ title }}</h3>
+      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ desc }}</p>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

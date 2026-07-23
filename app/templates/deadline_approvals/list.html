@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import empty_state %}
+{% block title %}Deadline Approvals · PriorityShift{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-5xl space-y-4">
+  <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Deadline Approvals</h1>
+
+  <form method="get" class="flex gap-2">
+    {% for s in ["pending", "approved", "rejected", "all"] %}
+      <a href="{{ url_for('deadline_approvals.list_view', status=s) }}" class="rounded-full px-3 py-1.5 text-xs font-medium {{ 'bg-brand-600 text-white' if status == s else 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' }}">{{ s|title }}</a>
+    {% endfor %}
+  </form>
+
+  <div class="card">
+    {% if revisions %}
+    <div class="divide-y divide-slate-100 dark:divide-white/[0.06]">
+      {% for r in revisions %}
+      <div class="px-4 py-4">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div class="min-w-0">
+            <a href="{{ url_for('projects.detail', project_id=r.project_id) }}" class="font-medium text-slate-800 hover:text-brand-600 dark:text-slate-100 dark:hover:text-brand-400">
+              {{ r.project.project_number if r.project else "—" }} · {{ r.project.title if r.project else "" }}
+            </a>
+            <p class="mt-0.5 text-sm text-slate-600 dark:text-slate-300">{{ r.previous_deadline or "unset" }} → {{ r.new_deadline or "unset" }}</p>
+            <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{{ r.reason }}</p>
+            <p class="mt-1 text-xs text-slate-400">
+              Requested by {{ r.changed_by.full_name if r.changed_by else "System" }} · {{ r.changed_at.strftime('%b %-d, %Y') }}
+              {% if r.decision_notes %} · {{ r.decision_notes }}{% endif %}
+            </p>
+          </div>
+          <span class="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium
+            {{ 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300' if r.status == 'pending' else
+               'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' if r.status == 'approved' else
+               'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300' }}">
+            {{ r.status|title }}
+          </span>
+        </div>
+        {% if r.status == "pending" %}
+        <div class="mt-3 flex gap-2">
+          <form method="post" action="{{ url_for('deadline_approvals.approve', revision_id=r.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn-primary">Approve</button>
+          </form>
+          <form method="post" action="{{ url_for('deadline_approvals.reject', revision_id=r.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn-secondary">Reject</button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+      {{ empty_state("Nothing here", "No deadline change requests match this filter.") }}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

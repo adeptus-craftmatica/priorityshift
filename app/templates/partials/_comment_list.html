@@ -1,0 +1,42 @@
+{% from "macros/ui.html" import avatar, empty_state %}
+<div id="comments-{{ item_type }}-{{ item_id }}">
+  <form hx-post="{{ url_for('comments.add_comment', item_type=item_type, item_id=item_id) }}"
+        hx-target="#comments-{{ item_type }}-{{ item_id }}" hx-swap="outerHTML" class="mb-4 space-y-2">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <textarea name="body" rows="2" class="field-input" placeholder="Add a comment…" required></textarea>
+    <div class="flex items-center justify-between">
+      <div class="flex gap-4">
+        <label class="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300"><input type="checkbox" name="is_decision" value="y"> Decision</label>
+        <label class="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300"><input type="checkbox" name="is_blocker" value="y"> Blocker</label>
+        {% if item_type == 'project' and project is defined and project.client_id %}
+        <label class="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300"><input type="checkbox" name="client_visible" value="y"> Visible to client</label>
+        {% endif %}
+      </div>
+      <button type="submit" class="btn-secondary text-xs !py-1.5">Post</button>
+    </div>
+  </form>
+
+  {% if comments %}
+  <div class="space-y-3">
+    {% for c in comments %}
+    <div class="flex gap-3 {{ 'rounded-lg bg-amber-50 p-2 dark:bg-amber-950/20' if c.is_pinned }}">
+      {{ avatar(c.author, size=7) }}
+      <div class="min-w-0 flex-1">
+        <div class="flex items-center gap-2 flex-wrap">
+          <p class="text-sm font-medium text-slate-800 dark:text-slate-100">{{ c.author.full_name }}</p>
+          <p class="text-xs text-slate-400">{{ c.created_at.strftime('%b %-d, %-I:%M %p') }}</p>
+          {% if c.is_decision %}<span class="rounded-full bg-brand-100 px-2 py-0.5 text-[10px] font-semibold text-brand-700 dark:bg-brand-900/50 dark:text-brand-300">DECISION</span>{% endif %}
+          {% if c.is_blocker %}<span class="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold text-rose-700 dark:bg-rose-900/50 dark:text-rose-300">BLOCKER</span>{% endif %}
+          {% if c.client_visible %}<span class="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">VISIBLE TO CLIENT</span>{% endif %}
+        </div>
+        <p class="mt-0.5 whitespace-pre-wrap text-sm text-slate-600 dark:text-slate-300">{{ c.body }}</p>
+        <button hx-post="{{ url_for('comments.toggle_pin', comment_id=c.id) }}" hx-target="#comments-{{ item_type }}-{{ item_id }}" hx-swap="outerHTML"
+                class="mt-1 text-xs text-slate-400 hover:text-brand-600">{{ "Unpin" if c.is_pinned else "Pin" }}</button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+    {{ empty_state("No comments yet", "Start the discussion above.") }}
+  {% endif %}
+</div>

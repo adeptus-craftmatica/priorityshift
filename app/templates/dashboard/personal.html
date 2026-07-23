@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import priority_badge, health_badge, stat_tile, empty_state, avatar %}
+{% block title %}{{ "My Dashboard" if target_user.id == current_user.id else target_user.full_name ~ "'s Dashboard" }} · PriorityShift{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-6xl space-y-6">
+
+  <div class="flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      {% if target_user.id != current_user.id %}{{ avatar(target_user, size=10) }}{% endif %}
+      <div>
+        <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+          {{ "Your Dashboard" if target_user.id == current_user.id else target_user.full_name }}
+        </h1>
+        <p class="text-sm text-slate-500 dark:text-slate-400">
+          {{ target_user.role.name }}{% if target_user.teams %} · {{ target_user.teams|map(attribute='name')|join(', ') }}{% endif %}
+        </p>
+      </div>
+    </div>
+  </div>
+
+  {# ---- What to work on next ---- #}
+  <div class="card overflow-hidden">
+    <div class="bg-gradient-to-br from-brand-600 to-brand-700 px-6 py-5">
+      <p class="text-xs font-semibold uppercase tracking-wide text-brand-100">Work on this next</p>
+      {% if top_item %}
+        {% set obj = top_item.obj %}
+        <a href="{{ url_for('projects.detail', project_id=obj.id) if top_item.type == 'project' else url_for('chores.detail', chore_id=obj.id) }}"
+           class="mt-1.5 block text-lg font-semibold text-white hover:underline">
+          {{ top_item.number }} · {{ top_item.title }}
+        </a>
+        <div class="mt-2 flex flex-wrap items-center gap-3">
+          {{ priority_badge(top_item.priority) }}
+          {% if top_item.due_date %}
+            <span class="text-sm text-brand-100">{{ "Overdue since" if top_item.is_overdue else "Due" }} {{ top_item.due_date.strftime('%b %-d, %Y') }}</span>
+          {% endif %}
+        </div>
+      {% else %}
+        <p class="mt-1.5 text-lg font-semibold text-white">Nothing assigned right now</p>
+        <p class="text-sm text-brand-100">Enjoy the calm, or check the requests queue.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+    {{ stat_tile("Available hrs", available_hours ~ "h", "of " ~ capacity_hours ~ "h capacity") }}
+    {{ stat_tile("Committed hrs", committed_hours ~ "h", "across active projects") }}
+    {{ stat_tile("Unplanned (30d)", unplanned_hours ~ "h", "vs " ~ planned_hours ~ "h planned", tone="warning" if unplanned_hours > planned_hours else "default") }}
+    {{ stat_tile("Overdue", overdue|length, tone="danger" if overdue else "default") }}
+  </div>
+
+  <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <div class="lg:col-span-2 space-y-6">
+      <div class="card">
+        <div class="border-b border-slate-100 px-5 py-4 dark:border-white/[0.06]">
+          <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-100">Priority queue</h2>
+        </div>
+        {% if queue %}
+          <div class="divide-y divide-slate-100 dark:divide-white/[0.06]">
+            {% for entry in queue %}{% include "partials/queue_item.html" %}{% endfor %}
+          </div>
+        {% else %}
+          {{ empty_state("Queue is empty", "No active projects or chores assigned.") }}
+        {% endif %}
+      </div>
+
+      {% if blocked or at_risk %}
+      <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        <div class="card">
+          <div class="border-b border-slate-100 px-5 py-4 dark:border-white/[0.06]">
+            <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-100">Blocked</h2>
+          </div>
+          {% if blocked %}
+            <div class="divide-y divide-slate-100 dark:divide-white/[0.06]">
+              {% for entry in blocked %}{% include "partials/queue_item.html" %}{% endfor %}
+            </div>
+          {% else %}<p class="p-4 text-sm text-slate-500 dark:text-slate-400">Nothing blocked.</p>{% endif %}
+        </div>
+        <div class="card">
+          <div class="border-b border-slate-100 px-5 py-4 dark:border-white/[0.06]">
+            <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-100">At risk</h2>
+          </div>
+          {% if at_risk %}
+            <div class="divide-y divide-slate-100 dark:divide-white/[0.06]">
+              {% for entry in at_risk %}{% include "partials/queue_item.html" %}{% endfor %}
+            </div>
+          {% else %}<p class="p-4 text-sm text-slate-500 dark:text-slate-400">Nothing at risk.</p>{% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="card">
+        <div class="border-b border-slate-100 px-5 py-4 dark:border-white/[0.06]">
+          <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-100">Recent activity</h2>
+        </div>
+        {% if recent_activity %}
+          <div class="divide-y divide-slate-100 dark:divide-white/[0.06]">
+            {% for a in recent_activity %}
+            <div class="px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300">
+              <span class="text-slate-400">{{ a.created_at.strftime('%b %-d') }}</span> — {{ a.description }}
+            </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          {{ empty_state("No recent activity", "Actions you take will show up here.") }}
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="space-y-6">
+      {% if pending_acknowledgment %}
+      <div class="card">
+        <div class="border-b border-slate-100 px-5 py-4 dark:border-white/[0.06]">
+          <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-100">Awaiting your acknowledgment</h2>
+        </div>
+        <div class="divide-y divide-slate-100 dark:divide-white/[0.06]">
+          {% for event in pending_acknowledgment %}
+          <div class="px-4 py-3">
+            <p class="text-sm text-slate-700 dark:text-slate-200">
+              {{ event.item_type|capitalize }} #{{ event.item_id }} raised to
+              <strong>{{ event.new_priority_level.name if event.new_priority_level }}</strong>
+            </p>
+            <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{{ event.reason }}</p>
+            <form method="post" action="{{ url_for('priority.acknowledge', event_id=event.id) }}" class="mt-2">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn-secondary text-xs !py-1">Acknowledge</button>
+            </form>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="card">
+        <div class="border-b border-slate-100 px-5 py-4 dark:border-white/[0.06]">
+          <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-100">Recently reprioritized</h2>
+        </div>
+        {% if recent_events %}
+          <div class="divide-y divide-slate-100 dark:divide-white/[0.06]">
+            {% for event in recent_events %}
+            <div class="px-4 py-2.5 text-sm">
+              <p class="text-slate-700 dark:text-slate-200">
+                {{ event.item_type|capitalize }} #{{ event.item_id }} →
+                {{ event.new_priority_level.name if event.new_priority_level }}
+              </p>
+              <p class="text-xs text-slate-400">{{ event.occurred_at.strftime('%b %-d') }} · {{ event.requested_by.full_name if event.requested_by else "System" }}</p>
+            </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="p-4 text-sm text-slate-500 dark:text-slate-400">No changes in the last 2 weeks.</p>
+        {% endif %}
+      </div>
+
+      <div class="card">
+        <div class="border-b border-slate-100 px-5 py-4 dark:border-white/[0.06]">
+          <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-100">My ideas</h2>
+        </div>
+        {% if my_ideas %}
+          <div class="divide-y divide-slate-100 dark:divide-white/[0.06]">
+            {% for idea in my_ideas %}
+            <a href="{{ url_for('ideas.detail', idea_id=idea.id) }}" class="flex items-center justify-between px-4 py-2.5 text-sm hover:bg-slate-50 dark:hover:bg-white/[0.03]">
+              <span class="truncate text-slate-700 dark:text-slate-200">{{ idea.title }}</span>
+              <span class="shrink-0 text-xs text-slate-400">{{ idea.review_status|replace('_', ' ')|title }}</span>
+            </a>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="p-4 text-sm text-slate-500 dark:text-slate-400">No ideas submitted yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

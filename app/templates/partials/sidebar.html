@@ -1,0 +1,88 @@
+<div x-show="mobileNavOpen" x-transition.opacity @click="mobileNavOpen = false" class="fixed inset-0 z-30 bg-slate-900/50 lg:hidden" style="display: none;"></div>
+<aside
+  class="fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col border-r border-white/[0.06] bg-slate-900 transition-transform duration-200 lg:static lg:flex lg:translate-x-0"
+  :class="{ 'translate-x-0': mobileNavOpen }"
+>
+  <div class="flex h-16 items-center gap-2.5 px-5">
+    <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 shadow-lg shadow-brand-600/30">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="white" class="h-5 w-5">
+        <path fill-rule="evenodd" d="M10 2a.75.75 0 01.75.75v.258a33.186 33.186 0 016.668.83.75.75 0 01-.336 1.461 31.28 31.28 0 00-1.03-.21c-.02.375-.048.75-.084 1.124a30.19 30.19 0 01-2.617 9.618A2.25 2.25 0 0111.25 17.5H8.75a2.25 2.25 0 01-2.101-1.669A30.192 30.192 0 014.032 6.213c-.036-.374-.064-.749-.084-1.124-.35.066-.696.14-1.03.21a.75.75 0 11-.336-1.462 33.184 33.184 0 016.668-.829V2.75A.75.75 0 0110 2z" clip-rule="evenodd" />
+      </svg>
+    </div>
+    <span class="text-base font-semibold tracking-tight text-white">PriorityShift</span>
+  </div>
+  <nav class="flex-1 space-y-7 overflow-y-auto px-3 py-5">
+    <div class="space-y-1">
+      <a href="{{ url_for('dashboard.personal') }}" class="nav-link {{ 'nav-link-active' if request.endpoint == 'dashboard.personal' }}">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5"><path d="M10.75 2.75a.75.75 0 00-1.5 0V4.5h-1a2 2 0 00-2 2v10.75c0 .414.336.75.75.75h9.5a.75.75 0 00.75-.75V6.5a2 2 0 00-2-2h-1V2.75a.75.75 0 00-1.5 0V4.5h-1.5V2.75z" /></svg>
+        My Dashboard
+      </a>
+      {% if current_user.has_permission('view_org_dashboard') %}
+      <a href="{{ url_for('dashboard.organization') }}" class="nav-link {{ 'nav-link-active' if request.endpoint == 'dashboard.organization' }}">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5"><path d="M4.5 2A1.5 1.5 0 003 3.5v13A1.5 1.5 0 004.5 18h11a1.5 1.5 0 001.5-1.5V7.621a1.5 1.5 0 00-.44-1.06l-4.12-4.122A1.5 1.5 0 0011.378 2H4.5zM6 10a.75.75 0 01.75-.75h6.5a.75.75 0 010 1.5h-6.5A.75.75 0 016 10zm.75 2.25a.75.75 0 000 1.5h4.5a.75.75 0 000-1.5h-5z" /></svg>
+        Organization
+      </a>
+      {% endif %}
+    </div>
+    <div>
+      <p class="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Work</p>
+      <div class="mt-1 space-y-1">
+        <a href="{{ url_for('projects.list_view') }}" class="nav-link {{ 'nav-link-active' if request.blueprint == 'projects' }}">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm3 1h6a1 1 0 010 2H7a1 1 0 010-2zm0 4h6a1 1 0 010 2H7a1 1 0 010-2zm0 4h4a1 1 0 010 2H7a1 1 0 010-2z" clip-rule="evenodd" /></svg>
+          Projects
+        </a>
+        <a href="{{ url_for('chores.list_view') }}" class="nav-link {{ 'nav-link-active' if request.blueprint == 'chores' }}">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clip-rule="evenodd" /></svg>
+          Chores
+        </a>
+        <a href="{{ url_for('ideas.list_view') }}" class="nav-link {{ 'nav-link-active' if request.blueprint == 'ideas' }}">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5"><path d="M11 2a1 1 0 10-2 0v1.07A7.002 7.002 0 003.07 9H2a1 1 0 100 2h1.07a7.002 7.002 0 005.93 5.93V18a1 1 0 102 0v-1.07A7.002 7.002 0 0016.93 11H18a1 1 0 100-2h-1.07A7.002 7.002 0 0011 3.07V2z" /></svg>
+          Ideas
+        </a>
+        <a href="{{ url_for('requests.list_view') }}" class="nav-link {{ 'nav-link-active' if request.blueprint == 'requests' }}">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5"><path fill-rule="evenodd" d="M10.5 3.75a2.25 2.25 0 10-4.5 0 .75.75 0 01-1.5 0 3.75 3.75 0 117.5 0v9.878a2.251 2.251 0 11-1.5 0V3.75z" clip-rule="evenodd" /></svg>
+          Requests
+        </a>
+        <a href="{{ url_for('calendar.index') }}" class="nav-link {{ 'nav-link-active' if request.blueprint == 'calendar' }}">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5"><path fill-rule="evenodd" d="M5.75 2a.75.75 0 01.75.75V4h7V2.75a.75.75 0 011.5 0V4h.25A2.75 2.75 0 0118 6.75v8.5A2.75 2.75 0 0115.25 18H4.75A2.75 2.75 0 012 15.25v-8.5A2.75 2.75 0 014.75 4H5V2.75A.75.75 0 015.75 2zm-1 5.5c-.69 0-1.25.56-1.25 1.25v6.5c0 .69.56 1.25 1.25 1.25h10.5c.69 0 1.25-.56 1.25-1.25v-6.5c0-.69-.56-1.25-1.25-1.25H4.75z" clip-rule="evenodd" /></svg>
+          Calendar
+        </a>
+      </div>
+    </div>
+    <div>
+      <p class="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Insights</p>
+      <div class="mt-1 space-y-1">
+        <a href="{{ url_for('reports.index') }}" class="nav-link {{ 'nav-link-active' if request.blueprint == 'reports' }}">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5"><path d="M15.5 2A1.5 1.5 0 0014 3.5v13a1.5 1.5 0 001.5 1.5h1a1.5 1.5 0 001.5-1.5v-13A1.5 1.5 0 0016.5 2h-1zM9.5 6A1.5 1.5 0 008 7.5v9A1.5 1.5 0 009.5 18h1a1.5 1.5 0 001.5-1.5v-9A1.5 1.5 0 0010.5 6h-1zM3.5 10A1.5 1.5 0 002 11.5v5A1.5 1.5 0 003.5 18h1A1.5 1.5 0 006 16.5v-5A1.5 1.5 0 004.5 10h-1z" /></svg>
+          Reports
+        </a>
+        {% if current_user.has_permission('approve_priority_change') %}
+        <a href="{{ url_for('deadline_approvals.list_view') }}" class="nav-link {{ 'nav-link-active' if request.blueprint == 'deadline_approvals' }}">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" /></svg>
+          Deadline Approvals
+        </a>
+        {% endif %}
+      </div>
+    </div>
+    {% if current_user.has_permission('manage_users') or current_user.has_permission('configure_workflows') %}
+    <div>
+      <p class="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Admin</p>
+      <div class="mt-1 space-y-1">
+        <a href="{{ url_for('admin.index') }}" class="nav-link {{ 'nav-link-active' if request.blueprint == 'admin' }}">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5"><path fill-rule="evenodd" d="M8.34 1.804A1 1 0 019.32 1h1.36a1 1 0 01.98.804l.295 1.473c.497.144.971.342 1.416.588l1.25-.834a1 1 0 011.294.104l.962.962a1 1 0 01.104 1.294l-.834 1.25c.246.445.444.919.588 1.416l1.473.294a1 1 0 01.804.98v1.361a1 1 0 01-.804.98l-1.473.295a6.95 6.95 0 01-.588 1.416l.834 1.25a1 1 0 01-.104 1.294l-.962.962a1 1 0 01-1.294.104l-1.25-.834c-.445.246-.919.444-1.416.588l-.294 1.473a1 1 0 01-.98.804H9.32a1 1 0 01-.98-.804l-.295-1.473a6.957 6.957 0 01-1.416-.588l-1.25.834a1 1 0 01-1.294-.104l-.962-.962a1 1 0 01-.104-1.294l.834-1.25a6.957 6.957 0 01-.588-1.416l-1.473-.294A1 1 0 011 10.68V9.32a1 1 0 01.804-.98l1.473-.295c.144-.497.342-.971.588-1.416l-.834-1.25a1 1 0 01.104-1.294l.962-.962A1 1 0 015.391 3.02l1.25.834a6.957 6.957 0 011.416-.588l.294-1.473z" clip-rule="evenodd" /></svg>
+          Admin
+        </a>
+      </div>
+    </div>
+    {% endif %}
+  </nav>
+  <div class="border-t border-white/[0.06] p-4">
+    <form method="post" action="{{ url_for('auth.logout') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="nav-link w-full">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5"><path fill-rule="evenodd" d="M3 4.25A2.25 2.25 0 015.25 2h5.5A2.25 2.25 0 0113 4.25v2a.75.75 0 01-1.5 0v-2a.75.75 0 00-.75-.75h-6a.75.75 0 00-.75.75v11.5c0 .414.336.75.75.75h5.5a.75.75 0 00.75-.75v-2a.75.75 0 011.5 0v2A2.25 2.25 0 0110.75 18h-6A2.25 2.25 0 013 15.75V4.25z" clip-rule="evenodd" /></svg>
+        Sign out
+      </button>
+    </form>
+  </div>
+</aside>

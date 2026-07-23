@@ -1,0 +1,33 @@
+{% from "macros/ui.html" import empty_state %}
+<form method="post" action="{{ url_for('attachments.upload', item_type=item_type, item_id=item_id) }}"
+      enctype="multipart/form-data" class="mb-4 flex flex-wrap items-center gap-3">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="file" name="file" required class="field-input flex-1 min-w-[12rem]" />
+  <button type="submit" class="btn-secondary shrink-0">Upload</button>
+</form>
+
+{% if attachments %}
+<div class="divide-y divide-slate-100 dark:divide-white/[0.06]">
+  {% for a in attachments %}
+  <div class="flex items-center justify-between gap-3 py-3 text-sm">
+    <a href="{{ url_for('attachments.download', attachment_id=a.id) }}" class="flex min-w-0 items-center gap-2 text-slate-700 hover:text-brand-600 dark:text-slate-200 dark:hover:text-brand-400">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4 shrink-0 text-slate-400">
+        <path fill-rule="evenodd" d="M15.621 4.379a3 3 0 00-4.242 0l-7 7a3 3 0 004.241 4.243h.001l.497-.5a.75.75 0 011.064 1.057l-.498.501-.002.002a4.5 4.5 0 01-6.364-6.364l7-7a4.5 4.5 0 016.368 6.36l-3.455 3.553A2.625 2.625 0 119.52 9.52l3.45-3.451a.75.75 0 111.061 1.06l-3.45 3.451a1.125 1.125 0 001.587 1.595l3.454-3.553a3 3 0 000-4.242z" clip-rule="evenodd" />
+      </svg>
+      <span class="truncate font-medium">{{ a.filename }}</span>
+    </a>
+    <div class="flex shrink-0 items-center gap-3 text-xs text-slate-400">
+      <span>{{ (a.size_bytes / 1024)|round(1) }} KB</span>
+      <span>{{ a.uploaded_by.full_name if a.uploaded_by else "Unknown" }}</span>
+      <span>{{ a.uploaded_at.strftime('%b %-d, %Y') }}</span>
+      <form method="post" action="{{ url_for('attachments.delete', attachment_id=a.id) }}" onsubmit="return confirm('Remove {{ a.filename }}?');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="text-rose-600 hover:underline dark:text-rose-400">Remove</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+  {{ empty_state("No attachments", "Upload supporting files, screenshots, or documents.") }}
+{% endif %}

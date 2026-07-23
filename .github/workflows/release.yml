@@ -1,0 +1,120 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            label: macOS
+            artifact: PriorityShift.dmg
+          - os: windows-latest
+            label: Windows
+            artifact: PriorityShift.zip
+          - os: ubuntu-latest
+            label: Linux
+            artifact: PriorityShift.tar.gz
+
+    runs-on: ${{ matrix.os }}
+    name: Build (${{ matrix.label }})
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y \
+            libxcb-cursor0 \
+            libxcb-icccm4 \
+            libxcb-image0 \
+            libxcb-keysyms1 \
+            libxcb-render-util0 \
+            libxkbcommon-x11-0 \
+            libgl1 \
+            libegl1
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Install create-dmg (macOS)
+        if: runner.os == 'macOS'
+        run: brew install create-dmg
+
+      - name: Build with PyInstaller
+        run: pyinstaller PriorityShift.spec --noconfirm
+
+      - name: Package (macOS → DMG)
+        if: runner.os == 'macOS'
+        run: |
+          create-dmg \
+            --volname "PriorityShift" \
+            --window-pos 200 140 \
+            --window-size 660 400 \
+            --icon-size 120 \
+            --icon "PriorityShift.app" 180 170 \
+            --hide-extension "PriorityShift.app" \
+            --app-drop-link 480 170 \
+            --no-internet-enable \
+            dist/PriorityShift.dmg \
+            dist/PriorityShift.app || \
+          hdiutil create \
+            -volname PriorityShift \
+            -srcfolder dist/PriorityShift.app \
+            -ov -format UDZO \
+            dist/PriorityShift.dmg
+
+      - name: Package (Windows → ZIP)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path dist\PriorityShift\* -DestinationPath dist\PriorityShift.zip
+
+      - name: Package (Linux → tar.gz)
+        if: runner.os == 'Linux'
+        run: tar -czf dist/PriorityShift.tar.gz -C dist PriorityShift
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PriorityShift-${{ matrix.label }}
+          path: dist/${{ matrix.artifact }}
+          if-no-files-found: error
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: PriorityShift ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            artifacts/PriorityShift-macOS/PriorityShift.dmg
+            artifacts/PriorityShift-Windows/PriorityShift.zip
+            artifacts/PriorityShift-Linux/PriorityShift.tar.gz

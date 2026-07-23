@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}{{ "Edit chore" if chore else "New Chore" }} · PriorityShift{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-2xl">
+  <h1 class="mb-4 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ "Edit chore" if chore else "New Chore" }}</h1>
+  <form method="post" class="card space-y-5 p-6" x-data="{ recurrence: '{{ form.recurrence_type.data or 'one_time' }}' }">
+    {{ form.hidden_tag() }}
+    <div>{{ form.title.label(class="field-label") }}{{ form.title(class="field-input") }}</div>
+    <div>{{ form.description.label(class="field-label") }}{{ form.description(class="field-input", rows=2) }}</div>
+
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div>{{ form.assigned_user_id.label(class="field-label") }}{{ form.assigned_user_id(class="field-input") }}</div>
+      <div>{{ form.assigned_team_id.label(class="field-label") }}{{ form.assigned_team_id(class="field-input") }}</div>
+    </div>
+
+    <div>{{ form.priority_level_id.label(class="field-label") }}{{ form.priority_level_id(class="field-input") }}</div>
+
+    <div>
+      {{ form.recurrence_type.label(class="field-label") }}
+      {{ form.recurrence_type(class="field-input", **{"x-model": "recurrence"}) }}
+    </div>
+    <div x-show="recurrence === 'specific_day_of_month'">
+      {{ form.day_of_month.label(class="field-label") }}{{ form.day_of_month(class="field-input") }}
+    </div>
+    <div x-show="recurrence === 'specific_weekday'">
+      {{ form.weekday.label(class="field-label") }}{{ form.weekday(class="field-input") }}
+    </div>
+    <div x-show="recurrence === 'custom'">
+      {{ form.interval_days.label(class="field-label") }}{{ form.interval_days(class="field-input") }}
+    </div>
+
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div>{{ form.due_date.label(class="field-label") }}{{ form.due_date(class="field-input") }}</div>
+      <div>{{ form.preferred_time_of_day.label(class="field-label") }}{{ form.preferred_time_of_day(class="field-input") }}</div>
+      <div>{{ form.estimated_duration_minutes.label(class="field-label") }}{{ form.estimated_duration_minutes(class="field-input") }}</div>
+    </div>
+
+    <label class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">{{ form.required_evidence() }} {{ form.required_evidence.label.text }}</label>
+    <div>{{ form.notes.label(class="field-label") }}{{ form.notes(class="field-input", rows=2) }}</div>
+    <div>{{ form.tag_names.label(class="field-label") }}{{ form.tag_names(class="field-input") }}</div>
+
+    <div class="flex justify-end gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
+      <a href="{{ url_for('chores.list_view') }}" class="btn-secondary">Cancel</a>
+      <button type="submit" class="btn-primary">{{ "Save" if chore else "Create chore" }}</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

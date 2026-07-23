@@ -1,0 +1,65 @@
+{% from "macros/ui.html" import priority_badge, empty_state %}
+{% set total = results.projects|length + results.chores|length + results.ideas|length + results.users|length %}
+{% if total == 0 %}
+  {{ empty_state("No results", "Nothing matched \"" ~ q ~ "\".") }}
+{% else %}
+<div class="space-y-6">
+  {% if results.projects %}
+  <div>
+    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Projects</p>
+    <div class="card divide-y divide-slate-100 dark:divide-white/[0.06]">
+      {% for p in results.projects %}
+      <a href="{{ url_for('projects.detail', project_id=p.id) }}" class="flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/[0.03]">
+        <div class="min-w-0">
+          <p class="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{{ p.project_number }} · {{ p.title }}</p>
+          <p class="truncate text-xs text-slate-500 dark:text-slate-400">{{ p.description or "" }}</p>
+        </div>
+        {{ priority_badge(p.priority_level) }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+  {% if results.chores %}
+  <div>
+    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Chores</p>
+    <div class="card divide-y divide-slate-100 dark:divide-white/[0.06]">
+      {% for c in results.chores %}
+      <a href="{{ url_for('chores.detail', chore_id=c.id) }}" class="flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/[0.03]">
+        <div class="min-w-0">
+          <p class="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{{ c.chore_number }} · {{ c.title }}</p>
+        </div>
+        {{ priority_badge(c.priority_level) }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+  {% if results.ideas %}
+  <div>
+    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Ideas</p>
+    <div class="card divide-y divide-slate-100 dark:divide-white/[0.06]">
+      {% for i in results.ideas %}
+      <a href="{{ url_for('ideas.detail', idea_id=i.id) }}" class="flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/[0.03]">
+        <p class="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{{ i.idea_number }} · {{ i.title }}</p>
+        <span class="text-xs text-slate-500 dark:text-slate-400">{{ i.review_status|replace('_',' ')|title }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+  {% if results.users %}
+  <div>
+    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">People</p>
+    <div class="card divide-y divide-slate-100 dark:divide-white/[0.06]">
+      {% for u in results.users %}
+      <a href="{{ url_for('dashboard.personal', user_id=u.id) }}" class="flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/[0.03]">
+        <p class="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{{ u.full_name }}</p>
+        <span class="text-xs text-slate-500 dark:text-slate-400">{{ u.role.name }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}

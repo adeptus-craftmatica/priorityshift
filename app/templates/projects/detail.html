@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import priority_badge, health_badge, avatar, tag_pill, reprioritization_tally, empty_state %}
+{% block title %}{{ project.project_number }} · {{ project.title }} · PriorityShift{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-5xl space-y-6" x-data="{ tab: 'overview' }">
+
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <p class="font-mono text-xs text-slate-400">{{ project.project_number }}</p>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ project.title }}</h1>
+      <div class="mt-2 flex flex-wrap items-center gap-3">
+        {{ priority_badge(project.priority_level, size="md") }}
+        {{ health_badge(project.health_status) }}
+        <span class="text-sm text-slate-500 dark:text-slate-400">{{ project.phase.name if project.phase }}</span>
+        {% if project.is_client %}<span class="text-xs rounded-full bg-slate-100 px-2 py-0.5 dark:bg-slate-800">Client</span>{% endif %}
+        {% if current_user.has_permission('view_financial_classification') %}
+          <span class="text-xs rounded-full bg-slate-100 px-2 py-0.5 dark:bg-slate-800">{{ "Paid" if project.is_paid else "Unpaid" }}</span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="flex gap-2">
+      {% if current_user.has_permission('change_priority') %}
+      <button hx-get="{{ url_for('priority.modal', item_type='project', item_id=project.id) }}" hx-target="#modal-root" hx-swap="innerHTML" class="btn-primary">Change priority</button>
+      {% endif %}
+      <a href="{{ url_for('projects.edit', project_id=project.id) }}" class="btn-secondary">Edit</a>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+    <div class="card p-4">
+      <p class="text-xs uppercase text-slate-500">Reprioritized</p>
+      <p class="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ project.reprioritization_count }}</p>
+    </div>
+    <div class="card p-4">
+      <p class="text-xs uppercase text-slate-500">Interruptions</p>
+      <p class="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ project.interruption_count }}</p>
+      <p class="text-xs text-slate-400">{{ (project.total_interruption_minutes / 60)|round(1) }}h lost</p>
+    </div>
+    <div class="card p-4">
+      <p class="text-xs uppercase text-slate-500">Deadline moves</p>
+      <p class="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ deadline_summary.revision_count }}</p>
+      <p class="text-xs text-slate-400">{{ deadline_summary.total_days_moved or 0 }} days total</p>
+    </div>
+    <div class="card p-4">
+      <p class="text-xs uppercase text-slate-500">Percent complete</p>
+      <p class="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ project.percent_complete }}%</p>
+    </div>
+  </div>
+
+  <div class="border-b border-slate-200 dark:border-white/[0.06]">
+    <nav class="-mb-px flex gap-6 overflow-x-auto text-sm">
+      {% for key, label in [("overview","Overview"), ("history","Priority History"), ("deadlines","Deadline History"), ("interruptions","Interruptions"), ("comments","Comments"), ("attachments","Attachments"), ("timeline","Timeline")] %}
+      <button @click="tab = '{{ key }}'" :class="tab === '{{ key }}' ? 'border-brand-600 text-brand-600 dark:text-brand-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400'"
+              class="whitespace-nowrap border-b-2 px-1 py-3 font-medium">{{ label }}</button>
+      {% endfor %}
+    </nav>
+  </div>
+
+  <div x-show="tab === 'overview'" class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <div class="lg:col-span-2 space-y-4">
+      <div class="card p-4">
+        <h3 class="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-100">Description</h3>
+        <p class="whitespace-pre-wrap text-sm text-slate-600 dark:text-slate-300">{{ project.description or "No description." }}</p>
+      </div>
+      {% if project.roadblocks %}
+      <div class="card p-4 ring-1 ring-inset ring-rose-200 dark:ring-rose-900">
+        <h3 class="mb-2 text-sm font-semibold text-rose-700 dark:text-rose-400">Active roadblocks</h3>
+        <p class="whitespace-pre-wrap text-sm text-slate-600 dark:text-slate-300">{{ project.roadblocks }}</p>
+      </div>
+      {% endif %}
+      {% if project.risks %}
+      <div class="card p-4">
+        <h3 class="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-100">Anticipated risks</h3>
+        <p class="whitespace-pre-wrap text-sm text-slate-600 dark:text-slate-300">{{ project.risks }}</p>
+      </div>
+      {% endif %}
+
+      <div class="card p-4">
+        <div class="mb-2 flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-100">On-track status</h3>
+        </div>
+        <form method="post" action="{{ url_for('projects.update_health', project_id=project.id) }}" class="space-y-2">
+          {{ health_form.hidden_tag() }}
+          <div class="flex gap-2">
+            {{ health_form.health_status(class="field-input") }}
+            <button type="submit" class="btn-secondary shrink-0">Update</button>
+          </div>
+          {{ health_form.health_reason(class="field-input", rows=2, placeholder="Why this status?") }}
+        </form>
+      </div>
+
+      <div class="card p-4">
+        <h3 class="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-100">Phase</h3>
+        <form method="post" action="{{ url_for('projects.update_phase', project_id=project.id) }}" class="flex gap-2">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <select name="phase_id" class="field-input">
+            {% for p in phases %}
+              <option value="{{ p.id }}" {{ "selected" if project.phase_id == p.id }}>{{ p.name }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn-secondary shrink-0">Update</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="space-y-4">
+      <div class="card p-4">
+        <h3 class="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-100">People</h3>
+        <dl class="space-y-2 text-sm">
+          <div><dt class="text-xs text-slate-500">Requested by</dt><dd class="text-slate-700 dark:text-slate-200">{{ project.requested_by.full_name if project.requested_by else "—" }}</dd></div>
+          <div><dt class="text-xs text-slate-500">Owner</dt><dd class="text-slate-700 dark:text-slate-200">{{ project.owner.full_name if project.owner else "—" }}</dd></div>
+          <div><dt class="text-xs text-slate-500">Approving manager</dt><dd class="text-slate-700 dark:text-slate-200">{{ project.approving_manager.full_name if project.approving_manager else "—" }}</dd></div>
+          <div>
+            <dt class="text-xs text-slate-500">Assigned developers</dt>
+            <dd class="mt-1 flex flex-wrap gap-1">
+              {% for a in project.assignments %}{{ avatar(a.user, size=7) }}{% else %}<span class="text-slate-400">Unassigned</span>{% endfor %}
+            </dd>
+          </div>
+        </dl>
+      </div>
+
+      <div class="card p-4">
+        <h3 class="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-100">Dates</h3>
+        <dl class="space-y-2 text-sm">
+          <div><dt class="text-xs text-slate-500">Requested</dt><dd class="text-slate-700 dark:text-slate-200">{{ project.date_requested.strftime('%b %-d, %Y') if project.date_requested else "—" }}</dd></div>
+          <div><dt class="text-xs text-slate-500">Original deadline</dt><dd class="text-slate-700 dark:text-slate-200">{{ project.original_deadline.strftime('%b %-d, %Y') if project.original_deadline else "—" }}</dd></div>
+          <div><dt class="text-xs text-slate-500">Current deadline</dt><dd class="font-medium text-slate-800 dark:text-slate-100">{{ deadline_summary.current_deadline.strftime('%b %-d, %Y') if deadline_summary.current_deadline else "—" }}</dd></div>
+        </dl>
+      </div>
+
+      {% if project.tags %}
+      <div class="card p-4">
+        <h3 class="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-100">Tags</h3>
+        <div class="flex flex-wrap gap-1.5">{% for t in project.tags %}{{ tag_pill(t) }}{% endfor %}</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div x-show="tab === 'history'">
+    <div class="card">
+      <div class="border-b border-slate-100 px-5 py-4 dark:border-white/[0.06]">
+        {{ reprioritization_tally(project.reprioritization_count, "#") }}
+      </div>
+      {% if priority_events %}
+      <div class="divide-y divide-slate-100 dark:divide-white/[0.06]">
+        {% for e in priority_events %}
+        <div class="px-4 py-3 text-sm">
+          <div class="flex items-center justify-between">
+            <p class="font-medium text-slate-800 dark:text-slate-100">
+              {{ e.previous_priority_level.name if e.previous_priority_level else "—" }} → {{ e.new_priority_level.name if e.new_priority_level else "—" }}
+            </p>
+            <p class="text-xs text-slate-400">{{ e.occurred_at.strftime('%b %-d, %Y %-I:%M %p') }}</p>
+          </div>
+          <p class="mt-1 text-slate-600 dark:text-slate-300">{{ e.reason }}</p>
+          {% if e.business_justification %}<p class="mt-0.5 text-xs text-slate-500">Business case: {{ e.business_justification }}</p>{% endif %}
+          <p class="mt-1 text-xs text-slate-400">
+            Requested by {{ e.requested_by.full_name if e.requested_by else "System" }}
+            {% if e.displaced_summary %} · Displaced: {{ e.displaced_summary }}{% endif %}
+            {% if e.developer_acknowledged_at %} · Acknowledged{% else %} · Not yet acknowledged{% endif %}
+          </p>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+        {{ empty_state("Never reprioritized", "This project has kept its original priority.") }}
+      {% endif %}
+    </div>
+  </div>
+
+  <div x-show="tab === 'deadlines'" class="space-y-4">
+    {% set proj = deadline_summary.projection %}
+    <div class="card p-4">
+      <h3 class="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-100">System-projected completion</h3>
+      {% if proj.insufficient_data %}
+        <p class="text-sm text-slate-500 dark:text-slate-400">{{ proj.reason }}</p>
+      {% else %}
+        <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div>
+            <dt class="text-xs text-slate-500">Projected finish</dt>
+            <dd class="mt-0.5 font-semibold {{ 'text-rose-600 dark:text-rose-400' if proj.at_risk else 'text-slate-800 dark:text-slate-100' }}">
+              {{ proj.projected_completion.strftime('%b %-d, %Y') if proj.projected_completion else "—" }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs text-slate-500">Remaining effort</dt>
+            <dd class="mt-0.5 font-semibold text-slate-800 dark:text-slate-100">{{ proj.remaining_hours }}h</dd>
+          </div>
+          <div>
+            <dt class="text-xs text-slate-500">Effective pace</dt>
+            <dd class="mt-0.5 font-semibold text-slate-800 dark:text-slate-100">{{ proj.effective_hours_per_week }}h/wk</dd>
+          </div>
+          <div>
+            <dt class="text-xs text-slate-500">Interruption drag</dt>
+            <dd class="mt-0.5 font-semibold text-slate-800 dark:text-slate-100">{{ proj.interruption_hours_per_week }}h/wk</dd>
+          </div>
+        </div>
+        {% if proj.at_risk %}
+          <p class="mt-3 text-xs font-medium text-rose-600 dark:text-rose-400">⚠ Projected to finish {{ proj.days_variance }} day{{ 's' if proj.days_variance != 1 else '' }} after the current deadline at this pace.</p>
+        {% elif proj.days_variance is not none %}
+          <p class="mt-3 text-xs text-slate-500 dark:text-slate-400">On pace to beat the current deadline by {{ -proj.days_variance }} day{{ 's' if proj.days_variance != -1 else '' }}.</p>
+        {% endif %}
+      {% endif %}
+    </div>
+    <div class="card">
+      {% if deadline_summary.revisions %}
+      <div class="divide-y divide-slate-100 dark:divide-white/[0.06]">
+        {% for r in deadline_summary.revisions %}
+        <div class="px-4 py-3 text-sm">
+          <div class="flex items-center justify-between gap-3">
+            <p class="font-medium text-slate-800 dark:text-slate-100">{{ r.previous_deadline or "unset" }} → {{ r.new_deadline or "unset" }}</p>
+            <div class="flex shrink-0 items-center gap-2">
+              {% if r.status != "approved" %}
+              <span class="rounded-full px-2 py-0.5 text-xs font-medium
+                {{ 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300' if r.status == 'pending' else 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300' }}">
+                {{ r.status|title }}
+              </span>
+              {% endif %}
+              <p class="text-xs text-slate-400">{{ r.changed_at.strftime('%b %-d, %Y') }}</p>
+            </div>
+          </div>
+          <p class="mt-1 text-slate-600 dark:text-slate-300">{{ r.reason }}</p>
+          {% if r.estimated_hours_lost %}<p class="text-xs text-slate-500">{{ r.estimated_hours_lost }}h estimated lost</p>{% endif %}
+          {% if r.decision_notes %}<p class="text-xs text-slate-500">Decision note: {{ r.decision_notes }}</p>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+        {{ empty_state("No deadline changes", "The original deadline still stands.") }}
+      {% endif %}
+    </div>
+  </div>
+
+  <div x-show="tab === 'interruptions'" class="space-y-4"
+       x-data="{
+         running: false, startedAt: null, elapsedSeconds: 0, intervalId: null,
+         start() {
+           this.running = true; this.startedAt = Date.now(); this.elapsedSeconds = 0;
+           this.intervalId = setInterval(() => {
+             this.elapsedSeconds = Math.floor((Date.now() - this.startedAt) / 1000);
+           }, 1000);
+         },
+         stop() {
+           clearInterval(this.intervalId); this.running = false;
+           const minutes = Math.max(1, Math.round(this.elapsedSeconds / 60));
+           this.$refs.durationInput.value = minutes;
+           this.$refs.durationInput.focus();
+           this.elapsedSeconds = 0;
+         },
+         formatted() {
+           const m = Math.floor(this.elapsedSeconds / 60).toString().padStart(2, '0');
+           const s = (this.elapsedSeconds % 60).toString().padStart(2, '0');
+           return m + ':' + s;
+         },
+       }">
+    <div class="card p-4">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-100">Interruption timer</h3>
+          <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Start it the moment you get pulled away — stopping it fills in the minutes below automatically.</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <span x-show="running" x-cloak class="font-mono text-lg font-semibold tabular-nums text-brand-600 dark:text-brand-400" x-text="formatted()"></span>
+          <button type="button" @click="start()" x-show="!running" class="btn-secondary">Start timer</button>
+          <button type="button" @click="stop()" x-show="running" x-cloak class="btn-primary">Stop &amp; fill form</button>
+        </div>
+      </div>
+    </div>
+    <div class="card p-4">
+      <h3 class="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-100">Log an interruption</h3>
+      <form method="post" action="{{ url_for('projects.log_interruption', project_id=project.id) }}" class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {{ interruption_form.hidden_tag() }}
+        <div class="sm:col-span-2">{{ interruption_form.new_task_description(class="field-input", placeholder="What are you being asked to do instead?") }}</div>
+        <div class="sm:col-span-2">{{ interruption_form.reason(class="field-input", rows=2, placeholder="Why?") }}</div>
+        <div>{{ interruption_form.duration_minutes(class="field-input", placeholder="Minutes consumed", **{"x-ref": "durationInput"}) }}</div>
+        <div>{{ interruption_form.context_switch_minutes(class="field-input", placeholder="Context-switch minutes") }}</div>
+        <label class="flex items-center gap-2 text-sm">{{ interruption_form.resumed_original() }} Resumed original work?</label>
+        <label class="flex items-center gap-2 text-sm">{{ interruption_form.deadline_affected() }} Affected a deadline?</label>
+        <div class="sm:col-span-2 flex justify-end"><button type="submit" class="btn-primary">Log interruption</button></div>
+      </form>
+    </div>
+    <div class="card">
+      {% if interruptions %}
+      <div class="divide-y divide-slate-100 dark:divide-white/[0.06]">
+        {% for i in interruptions %}
+        <div class="px-4 py-3 text-sm">
+          <p class="font-medium text-slate-800 dark:text-slate-100">{{ i.new_task_description }} — {{ i.duration_minutes }} min</p>
+          <p class="text-slate-600 dark:text-slate-300">{{ i.reason }}</p>
+          <p class="text-xs text-slate-400">{{ i.user.full_name }} · {{ i.start_time.strftime('%b %-d, %Y') }}{% if i.deadline_affected %} · Deadline affected{% endif %}</p>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+        {{ empty_state("No interruptions logged", "Log one above when this project's work gets paused for something else.") }}
+      {% endif %}
+    </div>
+    <div class="card p-4">
+      <h3 class="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-100">Log time</h3>
+      <form method="post" action="{{ url_for('projects.log_time', project_id=project.id) }}" class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {{ time_form.hidden_tag() }}
+        {{ time_form.entry_date(class="field-input") }}
+        {{ time_form.hours(class="field-input") }}
+        {{ time_form.category(class="field-input") }}
+        <button type="submit" class="btn-secondary">Log</button>
+      </form>
+    </div>
+  </div>
+
+  <div x-show="tab === 'comments'" class="card p-4">
+    {% with item_type = "project", item_id = project.id %}
+      {% include "partials/_comment_list.html" %}
+    {% endwith %}
+  </div>
+
+  <div x-show="tab === 'attachments'" class="card p-4">
+    {% with item_type = "project", item_id = project.id %}
+      {% include "partials/_attachment_list.html" %}
+    {% endwith %}
+  </div>
+
+  <div x-show="tab === 'timeline'" class="card">
+    {% if timeline %}
+    <div class="divide-y divide-slate-100 dark:divide-white/[0.06]">
+      {% for t in timeline %}
+      <div class="px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300">
+        <span class="text-slate-400">{{ t.created_at.strftime('%b %-d, %Y %-I:%M %p') }}</span> — {{ t.description }}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+      {{ empty_state("No activity yet", "Everything that happens to this project will show up here.") }}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
