@@ -20,9 +20,11 @@ from pathlib import Path
 from PySide6.QtCore import Qt, QTimer, QUrl
 from PySide6.QtGui import QDesktopServices, QFont, QTextCursor
 from PySide6.QtWidgets import (
-    QApplication, QDialog, QFormLayout, QFrame, QHBoxLayout, QLabel,
-    QLineEdit, QMainWindow, QMessageBox, QPlainTextEdit, QPushButton,
-    QVBoxLayout, QWidget,
+    QAbstractItemView, QApplication, QCheckBox, QComboBox, QDialog,
+    QFormLayout, QFrame, QHBoxLayout, QHeaderView, QLabel, QLineEdit,
+    QListWidget, QListWidgetItem, QMainWindow, QMessageBox, QPlainTextEdit,
+    QPushButton, QSpinBox, QTableWidget, QTableWidgetItem, QVBoxLayout,
+    QWidget,
 )
 
 PROJECT_DIR = Path(__file__).resolve().parent
@@ -305,6 +307,464 @@ class CreateAdminDialog(QDialog):
         }
 
 
+class UserFormDialog(QDialog):
+    """Create/edit form mirroring the web admin's UserForm — same fields,
+    same validation posture (password optional on edit, required on create).
+    Choice lists (roles/managers/departments/teams/clients) are queried once
+    at construction time and passed in, so this dialog has no DB access of
+    its own."""
+
+    def __init__(self, roles, users, departments, teams, clients, user=None, parent=None):
+        super().__init__(parent)
+        self.user = user
+        self.setWindowTitle("Edit User" if user else "New User")
+        self.setMinimumWidth(420)
+
+        self.full_name = QLineEdit(user.full_name if user else "")
+        self.username = QLineEdit(user.username if user else "")
+        self.email = QLineEdit(user.email if user else "")
+
+        self.password = QLineEdit()
+        self.password.setEchoMode(QLineEdit.EchoMode.Password)
+        self.password.setPlaceholderText("Leave blank to keep current" if user else "")
+        self.confirm_password = QLineEdit()
+        self.confirm_password.setEchoMode(QLineEdit.EchoMode.Password)
+
+        self.role = QComboBox()
+        for role in roles:
+            self.role.addItem(role.name, role.id)
+        if user:
+            idx = self.role.findData(user.role_id)
+            if idx >= 0:
+                self.role.setCurrentIndex(idx)
+
+        self.manager = QComboBox()
+        self.manager.addItem("— None —", 0)
+        for u in users:
+            if not user or u.id != user.id:
+                self.manager.addItem(u.full_name, u.id)
+        if user and user.manager_id:
+            idx = self.manager.findData(user.manager_id)
+            if idx >= 0:
+                self.manager.setCurrentIndex(idx)
+
+        self.client = QComboBox()
+        self.client.addItem("— None (internal staff) —", 0)
+        for c in clients:
+            self.client.addItem(c.name, c.id)
+        if user and user.client_id:
+            idx = self.client.findData(user.client_id)
+            if idx >= 0:
+                self.client.setCurrentIndex(idx)
+
+        self.capacity = QSpinBox()
+        self.capacity.setRange(0, 168)
+        self.capacity.setValue(int(user.capacity_hours_per_week) if user else 40)
+
+        self.departments = QListWidget()
+        self.departments.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
+        self.departments.setMaximumHeight(80)
+        existing_dept_ids = {d.id for d in user.departments} if user else set()
+        for d in departments:
+            item = QListWidgetItem(d.name)
+            item.setData(Qt.ItemDataRole.UserRole, d.id)
+            self.departments.addItem(item)
+            if d.id in existing_dept_ids:
+                item.setSelected(True)
+
+        self.teams = QListWidget()
+        self.teams.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
+        self.teams.setMaximumHeight(80)
+        existing_team_ids = {t.id for t in user.teams} if user else set()
+        for t in teams:
+            item = QListWidgetItem(t.name)
+            item.setData(Qt.ItemDataRole.UserRole, t.id)
+            self.teams.addItem(item)
+            if t.id in existing_team_ids:
+                item.setSelected(True)
+
+        self.active = QCheckBox("Active")
+        self.active.setChecked(user.active if user else True)
+
+        form = QFormLayout()
+        form.setSpacing(10)
+        form.addRow("Full name", self.full_name)
+        form.addRow("Username", self.username)
+        form.addRow("Email", self.email)
+        form.addRow("Password", self.password)
+        form.addRow("Confirm password", self.confirm_password)
+        form.addRow("Role", self.role)
+        form.addRow("Manager", self.manager)
+        form.addRow("Weekly capacity (hours)", self.capacity)
+        form.addRow("Departments", self.departments)
+        form.addRow("Teams", self.teams)
+        form.addRow("Client contact for", self.client)
+        form.addRow(self.active)
+
+        note = QLabel("Setting \"Client contact for\" restricts this account to the client portal only.")
+        note.setWordWrap(True)
+        note.setObjectName("subtitle")
+
+        buttons = QHBoxLayout()
+        buttons.addStretch()
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.clicked.connect(self.reject)
+        save_btn = QPushButton("Save")
+        save_btn.setObjectName("primary")
+        save_btn.setDefault(True)
+        save_btn.clicked.connect(self._validate_and_accept)
+        buttons.addWidget(cancel_btn)
+        buttons.addWidget(save_btn)
+
+        layout = QVBoxLayout()
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(14)
+        layout.addLayout(form)
+        layout.addWidget(note)
+        layout.addLayout(buttons)
+        self.setLayout(layout)
+
+    def _validate_and_accept(self):
+        if not self.full_name.text().strip() or not self.username.text().strip() or not self.email.text().strip():
+            QMessageBox.warning(self, "Missing fields", "Full name, username, and email are required.")
+            return
+        password = self.password.text()
+        if not self.user and not password:
+            QMessageBox.warning(self, "Password required", "Set a password for the new account.")
+            return
+        if password and password != self.confirm_password.text():
+            QMessageBox.warning(self, "Passwords don't match", "Password and confirmation must match.")
+            return
+        if password and len(password) < 6:
+            QMessageBox.warning(self, "Password too short", "Use at least 6 characters.")
+            return
+        self.accept()
+
+    def values(self):
+        return {
+            "full_name": self.full_name.text().strip(),
+            "username": self.username.text().strip(),
+            "email": self.email.text().strip(),
+            "password": self.password.text(),
+            "role_id": self.role.currentData(),
+            "manager_id": self.manager.currentData() or None,
+            "client_id": self.client.currentData() or None,
+            "capacity_hours_per_week": self.capacity.value(),
+            "department_ids": [item.data(Qt.ItemDataRole.UserRole) for item in self.departments.selectedItems()],
+            "team_ids": [item.data(Qt.ItemDataRole.UserRole) for item in self.teams.selectedItems()],
+            "active": self.active.isChecked(),
+        }
+
+
+class ResetPasswordDialog(QDialog):
+    def __init__(self, target_full_name, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Reset Password")
+        self.setMinimumWidth(360)
+
+        self.password = QLineEdit()
+        self.password.setEchoMode(QLineEdit.EchoMode.Password)
+        self.confirm_password = QLineEdit()
+        self.confirm_password.setEchoMode(QLineEdit.EchoMode.Password)
+
+        form = QFormLayout()
+        form.setSpacing(10)
+        form.addRow("New password", self.password)
+        form.addRow("Confirm password", self.confirm_password)
+
+        note = QLabel(f"Setting a new password for {target_full_name}.")
+        note.setWordWrap(True)
+        note.setObjectName("subtitle")
+
+        buttons = QHBoxLayout()
+        buttons.addStretch()
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.clicked.connect(self.reject)
+        save_btn = QPushButton("Reset Password")
+        save_btn.setObjectName("primary")
+        save_btn.setDefault(True)
+        save_btn.clicked.connect(self._validate_and_accept)
+        buttons.addWidget(cancel_btn)
+        buttons.addWidget(save_btn)
+
+        layout = QVBoxLayout()
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(14)
+        layout.addWidget(note)
+        layout.addLayout(form)
+        layout.addLayout(buttons)
+        self.setLayout(layout)
+
+    def _validate_and_accept(self):
+        password = self.password.text()
+        if len(password) < 6:
+            QMessageBox.warning(self, "Password too short", "Use at least 6 characters.")
+            return
+        if password != self.confirm_password.text():
+            QMessageBox.warning(self, "Passwords don't match", "Password and confirmation must match.")
+            return
+        self.accept()
+
+    @property
+    def new_password(self):
+        return self.password.text()
+
+
+class UserManagementWindow(QDialog):
+    """The full user-management plane, done in the desktop app rather than
+    the website — list, create, edit, reset password, lock/unlock. Talks
+    directly to the Flask app's models inside an app context, same pattern
+    as ControlPanel's create_admin_account/load_sample_data."""
+
+    def __init__(self, flask_app, parent=None):
+        super().__init__(parent)
+        self.flask_app = flask_app
+        self.setWindowTitle("Manage Users")
+        self.setMinimumSize(720, 480)
+
+        self._build_ui()
+        self.refresh_users()
+
+    def _build_ui(self):
+        layout = QVBoxLayout()
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(14)
+
+        title = QLabel("Manage Users")
+        title.setObjectName("title")
+        layout.addWidget(title)
+
+        self.table = QTableWidget(0, 5)
+        self.table.setHorizontalHeaderLabels(["Full Name", "Username", "Email", "Role", "Status"])
+        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.itemSelectionChanged.connect(self._update_button_states)
+        self.table.itemDoubleClicked.connect(lambda _: self.edit_user())
+        layout.addWidget(self.table, stretch=1)
+
+        buttons = QHBoxLayout()
+        buttons.setSpacing(10)
+        self.new_btn = QPushButton("New User")
+        self.new_btn.setObjectName("primary")
+        self.new_btn.clicked.connect(self.new_user)
+        self.edit_btn = QPushButton("Edit User")
+        self.edit_btn.clicked.connect(self.edit_user)
+        self.reset_pw_btn = QPushButton("Reset Password")
+        self.reset_pw_btn.clicked.connect(self.reset_password)
+        self.toggle_active_btn = QPushButton("Lock / Unlock")
+        self.toggle_active_btn.setObjectName("danger")
+        self.toggle_active_btn.clicked.connect(self.toggle_active)
+        buttons.addWidget(self.new_btn)
+        buttons.addWidget(self.edit_btn)
+        buttons.addWidget(self.reset_pw_btn)
+        buttons.addWidget(self.toggle_active_btn)
+        buttons.addStretch()
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(self.accept)
+        buttons.addWidget(close_btn)
+        layout.addLayout(buttons)
+
+        self.setLayout(layout)
+        self._update_button_states()
+
+    def _update_button_states(self):
+        has_selection = bool(self.table.selectedItems())
+        self.edit_btn.setEnabled(has_selection)
+        self.reset_pw_btn.setEnabled(has_selection)
+        self.toggle_active_btn.setEnabled(has_selection)
+
+    def _selected_user_id(self):
+        rows = self.table.selectionModel().selectedRows()
+        if not rows:
+            return None
+        return self.table.item(rows[0].row(), 0).data(Qt.ItemDataRole.UserRole)
+
+    def refresh_users(self):
+        with self.flask_app.app_context():
+            from app.models import User
+            users = User.query.order_by(User.full_name).all()
+            rows = [
+                (u.id, u.full_name, u.username, u.email,
+                 u.role.name if u.role else "—", "Active" if u.active else "Locked")
+                for u in users
+            ]
+
+        self.table.setRowCount(len(rows))
+        for row, (uid, full_name, username, email, role_name, status) in enumerate(rows):
+            name_item = QTableWidgetItem(full_name)
+            name_item.setData(Qt.ItemDataRole.UserRole, uid)
+            self.table.setItem(row, 0, name_item)
+            self.table.setItem(row, 1, QTableWidgetItem(username))
+            self.table.setItem(row, 2, QTableWidgetItem(email))
+            self.table.setItem(row, 3, QTableWidgetItem(role_name))
+            status_item = QTableWidgetItem(status)
+            if status == "Locked":
+                status_item.setForeground(Qt.GlobalColor.red)
+            self.table.setItem(row, 4, status_item)
+        self._update_button_states()
+
+    def _choice_lists(self):
+        with self.flask_app.app_context():
+            from app.models import Client, Department, Role, Team, User
+            roles = Role.query.order_by(Role.hierarchy_level).all()
+            users = User.query.order_by(User.full_name).all()
+            departments = Department.query.order_by(Department.name).all()
+            teams = Team.query.order_by(Team.name).all()
+            clients = Client.query.order_by(Client.name).all()
+            # Detach plain data so it survives past this app-context block —
+            # SQLAlchemy objects themselves become unusable once the session
+            # that loaded them is torn down.
+            return (
+                [_Ref(r.id, r.name, hierarchy_level=r.hierarchy_level) for r in roles],
+                [_Ref(u.id, u.full_name) for u in users],
+                [_Ref(d.id, d.name) for d in departments],
+                [_Ref(t.id, t.name) for t in teams],
+                [_Ref(c.id, c.name) for c in clients],
+            )
+
+    def new_user(self):
+        roles, users, departments, teams, clients = self._choice_lists()
+        dialog = UserFormDialog(roles, users, departments, teams, clients, user=None, parent=self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        values = dialog.values()
+
+        try:
+            with self.flask_app.app_context():
+                from app.extensions import db
+                from app.models import Department, Team, User
+                user = User(
+                    username=values["username"].lower(), email=values["email"].lower(),
+                    full_name=values["full_name"], role_id=values["role_id"],
+                    manager_id=values["manager_id"], client_id=values["client_id"],
+                    capacity_hours_per_week=values["capacity_hours_per_week"], active=values["active"],
+                )
+                user.set_password(values["password"])
+                db.session.add(user)
+                user.departments = Department.query.filter(Department.id.in_(values["department_ids"])).all()
+                user.teams = Team.query.filter(Team.id.in_(values["team_ids"])).all()
+                db.session.commit()
+                full_name = user.full_name
+            QMessageBox.information(self, "User created", f"{full_name} has been created.")
+            self.refresh_users()
+        except Exception as exc:
+            QMessageBox.critical(self, "Couldn't create user", str(exc))
+
+    def edit_user(self):
+        user_id = self._selected_user_id()
+        if user_id is None:
+            return
+        roles, users, departments, teams, clients = self._choice_lists()
+
+        with self.flask_app.app_context():
+            from app.models import User
+            target = User.query.get(user_id)
+            existing = _Ref(
+                target.id, target.full_name, username=target.username, email=target.email,
+                role_id=target.role_id, manager_id=target.manager_id, client_id=target.client_id,
+                capacity_hours_per_week=target.capacity_hours_per_week, active=target.active,
+                departments=[_Ref(d.id, d.name) for d in target.departments],
+                teams=[_Ref(t.id, t.name) for t in target.teams],
+            )
+
+        dialog = UserFormDialog(roles, users, departments, teams, clients, user=existing, parent=self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        values = dialog.values()
+
+        try:
+            with self.flask_app.app_context():
+                from app.extensions import db
+                from app.models import Department, Team, User
+                user = User.query.get(user_id)
+                user.username = values["username"].lower()
+                user.email = values["email"].lower()
+                user.full_name = values["full_name"]
+                user.role_id = values["role_id"]
+                user.manager_id = values["manager_id"]
+                user.client_id = values["client_id"]
+                user.capacity_hours_per_week = values["capacity_hours_per_week"]
+                user.active = values["active"]
+                if values["password"]:
+                    user.set_password(values["password"])
+                user.departments = Department.query.filter(Department.id.in_(values["department_ids"])).all()
+                user.teams = Team.query.filter(Team.id.in_(values["team_ids"])).all()
+                db.session.commit()
+                full_name = user.full_name
+            QMessageBox.information(self, "User updated", f"{full_name} has been updated.")
+            self.refresh_users()
+        except Exception as exc:
+            QMessageBox.critical(self, "Couldn't update user", str(exc))
+
+    def reset_password(self):
+        user_id = self._selected_user_id()
+        if user_id is None:
+            return
+        with self.flask_app.app_context():
+            from app.models import User
+            full_name = User.query.get(user_id).full_name
+
+        dialog = ResetPasswordDialog(full_name, parent=self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        try:
+            with self.flask_app.app_context():
+                from app.extensions import db
+                from app.models import User
+                user = User.query.get(user_id)
+                user.set_password(dialog.new_password)
+                db.session.commit()
+            QMessageBox.information(self, "Password reset", f"Password reset for {full_name}.")
+        except Exception as exc:
+            QMessageBox.critical(self, "Couldn't reset password", str(exc))
+
+    def toggle_active(self):
+        user_id = self._selected_user_id()
+        if user_id is None:
+            return
+        with self.flask_app.app_context():
+            from app.models import User
+            target = User.query.get(user_id)
+            full_name, currently_active = target.full_name, target.active
+
+        action = "lock out" if currently_active else "unlock"
+        confirmed = QMessageBox.question(
+            self, f"{action.title()} user".title(), f"Are you sure you want to {action} {full_name}?",
+        )
+        if confirmed != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+            with self.flask_app.app_context():
+                from app.extensions import db
+                from app.models import User
+                user = User.query.get(user_id)
+                user.active = not user.active
+                db.session.commit()
+            self.refresh_users()
+        except Exception as exc:
+            QMessageBox.critical(self, "Couldn't update user", str(exc))
+
+
+class _Ref:
+    """A plain, detached stand-in for a SQLAlchemy row — carries just the
+    attributes UserFormDialog needs, so dialog code never touches an ORM
+    object outside the app-context block that loaded it."""
+
+    def __init__(self, id, name, **extra):
+        self.id = id
+        self.name = name
+        self.full_name = name
+        for key, value in extra.items():
+            setattr(self, key, value)
+        self.departments = extra.get("departments", [])
+        self.teams = extra.get("teams", [])
+
+
 class ControlPanel(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -406,9 +866,13 @@ class ControlPanel(QMainWindow):
         account_buttons.setSpacing(10)
         self.create_admin_btn = QPushButton("Create Admin Account")
         self.create_admin_btn.clicked.connect(self.create_admin_account)
+        self.manage_users_btn = QPushButton("Manage Users")
+        self.manage_users_btn.setObjectName("primary")
+        self.manage_users_btn.clicked.connect(self.manage_users)
         self.sample_data_btn = QPushButton("Load Sample Data")
         self.sample_data_btn.clicked.connect(self.load_sample_data)
         account_buttons.addWidget(self.create_admin_btn)
+        account_buttons.addWidget(self.manage_users_btn)
         account_buttons.addWidget(self.sample_data_btn)
         account_buttons.addStretch()
         root.addLayout(account_buttons)
@@ -600,6 +1064,12 @@ class ControlPanel(QMainWindow):
             )
 
     # ---------- Accounts ----------
+
+    def manage_users(self):
+        if not self.ensure_db_initialized():
+            return
+        dialog = UserManagementWindow(self._get_flask_app(), parent=self)
+        dialog.exec()
 
     def create_admin_account(self):
         if not self.ensure_db_initialized():
