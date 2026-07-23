@@ -552,6 +552,59 @@ class UserHistoryDialog(QDialog):
         self.setLayout(layout)
 
 
+class ConfirmResetDialog(QDialog):
+    """Requires typing a literal confirmation phrase before the destructive
+    action becomes clickable — the same "type to confirm" pattern used by
+    GitHub/similar tools for irreversible actions, since a plain Yes/No is
+    too easy to click through on autopilot for something this destructive."""
+
+    CONFIRM_PHRASE = "DELETE"
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Reset Database")
+        self.setMinimumWidth(420)
+
+        warning = QLabel(
+            "This permanently deletes every project, chore, idea, user, comment, "
+            "attachment, and audit record in the database. There is no undo from "
+            "inside the app — a timestamped backup copy of the current database "
+            "file is made first, but restoring from it means manually swapping "
+            "files back yourself.\n\n"
+            f"Type {self.CONFIRM_PHRASE} below to confirm."
+        )
+        warning.setWordWrap(True)
+
+        self.confirm_input = QLineEdit()
+        self.confirm_input.setPlaceholderText(self.CONFIRM_PHRASE)
+        self.confirm_input.textChanged.connect(self._update_confirm_state)
+
+        form = QFormLayout()
+        form.addRow(f"Type \"{self.CONFIRM_PHRASE}\"", self.confirm_input)
+
+        buttons = QHBoxLayout()
+        buttons.addStretch()
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.clicked.connect(self.reject)
+        self.confirm_btn = QPushButton("Reset Database")
+        self.confirm_btn.setObjectName("danger")
+        self.confirm_btn.setEnabled(False)
+        self.confirm_btn.clicked.connect(self.accept)
+        buttons.addWidget(cancel_btn)
+        buttons.addWidget(self.confirm_btn)
+
+        layout = QVBoxLayout()
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(16)
+        layout.addWidget(warning)
+        layout.addLayout(form)
+        layout.addLayout(buttons)
+        self.setLayout(layout)
+
+    def _update_confirm_state(self, text):
+        self.confirm_btn.setEnabled(text.strip() == self.CONFIRM_PHRASE)
+
+
 class UserManagementWindow(QDialog):
     """The full user-management plane, done in the desktop app rather than
     the website — list, create, edit, reset password, lock/unlock. Talks
@@ -1006,6 +1059,20 @@ class ControlPanel(QMainWindow):
         account_buttons.addStretch()
         root.addLayout(account_buttons)
 
+        # Danger zone
+        danger_section = QLabel("DANGER ZONE")
+        danger_section.setObjectName("sectionLabel")
+        root.addWidget(danger_section)
+
+        danger_buttons = QHBoxLayout()
+        danger_buttons.setSpacing(10)
+        self.reset_db_btn = QPushButton("Reset Database…")
+        self.reset_db_btn.setObjectName("danger")
+        self.reset_db_btn.clicked.connect(self.reset_database)
+        danger_buttons.addWidget(self.reset_db_btn)
+        danger_buttons.addStretch()
+        root.addLayout(danger_buttons)
+
         # Log console
         log_section = QLabel("ACTIVITY LOG")
         log_section.setObjectName("sectionLabel")
@@ -1258,6 +1325,62 @@ class ControlPanel(QMainWindow):
         except Exception as exc:
             self.log(f"Error loading sample data: {exc}")
             QMessageBox.critical(self, "Couldn't load sample data", str(exc))
+
+    def reset_database(self):
+        if self.server_thread is not None:
+            QMessageBox.warning(
+                self, "Stop the server first",
+                "Stop the server before resetting the database, so nothing is "
+                "mid-request while the tables are dropped.",
+            )
+            return
+
+        dialog = ConfirmResetDialog(self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        try:
+            backup_path = self._backup_sqlite_file()
+            if backup_path:
+                self.log(f"Backed up current database to {backup_path}")
+
+            flask_app = self._get_flask_app()
+            with flask_app.app_context():
+                from app.extensions import db
+                from flask_migrate import stamp
+                db.session.remove()
+                db.drop_all()
+                db.create_all()
+                stamp()
+            self.log("Database reset — clean slate, ready for a fresh account.")
+            self._refresh_database_status()
+            QMessageBox.information(
+                self, "Database reset",
+                "All data has been cleared. Use \"Create Admin Account\" to get started again.",
+            )
+        except Exception as exc:
+            self.log(f"Error resetting database: {exc}")
+            QMessageBox.critical(self, "Couldn't reset database", str(exc))
+
+    def _backup_sqlite_file(self):
+        """Best-effort safety net before a destructive reset — only applies
+        when the database is a local SQLite file (always true for this
+        desktop app), silently skipped otherwise rather than blocking the
+        reset over a convenience feature."""
+        uri = self._get_flask_app().config.get("SQLALCHEMY_DATABASE_URI", "")
+        prefix = "sqlite:///"
+        if not uri.startswith(prefix):
+            return None
+        db_path = Path(uri[len(prefix):])
+        if not db_path.exists():
+            return None
+
+        import shutil
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        backup_path = db_path.with_name(f"{db_path.stem}.backup-{timestamp}{db_path.suffix}")
+        shutil.copy2(db_path, backup_path)
+        return backup_path
 
     # ---------- Lifecycle ----------
 
