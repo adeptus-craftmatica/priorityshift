@@ -28,6 +28,13 @@
     </div>
   </form>
 
+  <div class="flex items-center justify-between">
+    <p class="text-sm text-slate-500 dark:text-slate-400">{{ users|length }} user{{ "s" if users|length != 1 }}{{ " (archived hidden)" if not show_archived }}</p>
+    <a href="{{ url_for('admin.users', show_archived=0 if show_archived else 1) }}" class="text-sm text-brand-600 hover:underline dark:text-brand-400">
+      {{ "Hide archived" if show_archived else "Show archived" }}
+    </a>
+  </div>
+
   <div class="card overflow-x-auto">
     <table class="w-full text-left text-sm">
       <thead>
@@ -41,7 +48,9 @@
           <td class="px-4 py-2.5"><div class="flex items-center gap-2">{{ avatar(u, size=6) }}{{ u.full_name }}</div></td>
           <td class="px-4 py-2.5 text-slate-600 dark:text-slate-300">{{ u.role.name }}</td>
           <td class="px-4 py-2.5">
-            {% if u.active %}
+            {% if u.is_archived %}
+              <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-white/[0.06] dark:text-slate-400">Archived</span>
+            {% elif u.active %}
               <span class="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">Active</span>
             {% else %}
               <span class="inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">Locked out</span>
@@ -51,12 +60,22 @@
             <div class="flex items-center gap-3">
               <a href="{{ url_for('admin.users', edit_id=u.id) }}" class="text-brand-600 hover:underline dark:text-brand-400">Edit</a>
               <a href="{{ url_for('admin.reset_password', user_id=u.id) }}" class="text-brand-600 hover:underline dark:text-brand-400">Reset password</a>
+              <a href="{{ url_for('admin.user_history', user_id=u.id) }}" class="text-brand-600 hover:underline dark:text-brand-400">History</a>
               {% if u.id != current_user.id %}
+              {% if not u.is_archived %}
               <form method="post" action="{{ url_for('admin.toggle_active', user_id=u.id) }}"
                     onsubmit="return confirm('{{ 'Unlock' if not u.active else 'Lock out' }} {{ u.full_name }}?');">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="{{ 'text-emerald-600 dark:text-emerald-400' if not u.active else 'text-rose-600 dark:text-rose-400' }} hover:underline">
                   {{ "Unlock" if not u.active else "Lock out" }}
+                </button>
+              </form>
+              {% endif %}
+              <form method="post" action="{{ url_for('admin.unarchive' if u.is_archived else 'admin.archive', user_id=u.id) }}"
+                    onsubmit="return confirm('{{ 'Restore ' ~ u.full_name ~ ' from the archive?' if u.is_archived else 'Archive ' ~ u.full_name ~ '? This locks the account and hides them from active-user lists. Nothing is deleted.' }}');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="text-slate-500 hover:underline dark:text-slate-400">
+                  {{ "Unarchive" if u.is_archived else "Archive" }}
                 </button>
               </form>
               {% endif %}

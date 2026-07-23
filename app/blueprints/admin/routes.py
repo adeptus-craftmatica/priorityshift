@@ -11,6 +11,7 @@ from app.blueprints.admin.forms import (
     RoleForm, TagForm, TeamForm, UserForm, WorkflowRuleForm,
 )
 from app.services.permissions import PERMISSIONS, requires_permission
+from app.services.user_lifecycle import archive_user, get_user_history, set_active, unarchive_user
 
 bp = Blueprint("admin", __name__)
 
@@ -43,6 +44,8 @@ def users():
     form = UserForm()
     form.role_id.choices = [(r.id, r.name) for r in Role.query.order_by(Role.hierarchy_level).all()]
     all_users = User.query.order_by(User.full_name).all()
+    show_archived = request.args.get("show_archived") == "1"
+    visible_users = all_users if show_archived else [u for u in all_users if not u.is_archived]
     form.manager_id.choices = [(0, "— None —")] + [(u.id, u.full_name) for u in all_users]
     form.team_lead_id.choices = form.manager_id.choices
     form.department_ids.choices = [(d.id, d.name) for d in Department.query.order_by(Department.name).all()]
@@ -64,7 +67,13 @@ def users():
         user.manager_id = form.manager_id.data or None
         user.team_lead_id = form.team_lead_id.data or None
         user.capacity_hours_per_week = form.capacity_hours_per_week.data or 40
-        user.active = form.active.data
+        if form.id.data and form.active.data != user.active:
+            # Route through the audited path — this checkbox is just
+            # another way to reach the same active/inactive state as the
+            # dedicated Lock/Unlock button, and must not bypass the trail.
+            set_active(user, form.active.data, actor=current_user)
+        else:
+            user.active = form.active.data
         user.client_id = form.client_id.data or None
         if form.password.data:
             user.set_password(form.password.data)
@@ -95,7 +104,7 @@ def users():
         form.team_ids.data = [t.id for t in user.teams]
         form.client_id.data = user.client_id or 0
 
-    return render_template("admin/users.html", form=form, users=all_users)
+    return render_template("admin/users.html", form=form, users=visible_users, show_archived=show_archived)
 
 
 @bp.route("/users/<int:user_id>/reset-password", methods=["GET", "POST"])
@@ -121,13 +130,45 @@ def toggle_active(user_id):
         flash("You can't lock yourself out — ask another admin to do this.", "error")
         return redirect(url_for("admin.users"))
 
-    target_user.active = not target_user.active
+    set_active(target_user, not target_user.active, actor=current_user)
     db.session.commit()
     flash(
         f"{target_user.full_name} {'unlocked' if target_user.active else 'locked out'}.",
         "success",
     )
     return redirect(url_for("admin.users"))
+
+
+@bp.route("/users/<int:user_id>/archive", methods=["POST"])
+@requires_permission("manage_users")
+def archive(user_id):
+    target_user = User.query.get_or_404(user_id)
+    if target_user.id == current_user.id:
+        flash("You can't archive your own account — ask another admin to do this.", "error")
+        return redirect(url_for("admin.users"))
+
+    archive_user(target_user, actor=current_user)
+    db.session.commit()
+    flash(f"{target_user.full_name} archived.", "success")
+    return redirect(url_for("admin.users"))
+
+
+@bp.route("/users/<int:user_id>/unarchive", methods=["POST"])
+@requires_permission("manage_users")
+def unarchive(user_id):
+    target_user = User.query.get_or_404(user_id)
+    unarchive_user(target_user, actor=current_user)
+    db.session.commit()
+    flash(f"{target_user.full_name} restored from archive.", "success")
+    return redirect(url_for("admin.users"))
+
+
+@bp.route("/users/<int:user_id>/history")
+@requires_permission("manage_users")
+def user_history(user_id):
+    target_user = User.query.get_or_404(user_id)
+    entries = get_user_history(target_user)
+    return render_template("admin/user_history.html", target_user=target_user, entries=entries)
 
 
 # ---------- Roles ----------

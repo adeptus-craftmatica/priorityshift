@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import avatar, empty_state %}
+{% block title %}History — {{ target_user.full_name }} · Admin{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-3xl space-y-6">
+  <a href="{{ url_for('admin.users') }}" class="text-sm text-slate-500 hover:underline dark:text-slate-400">&larr; Back to Users</a>
+
+  <div class="flex items-center gap-3">
+    {{ avatar(target_user, size=10) }}
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ target_user.full_name }}</h1>
+      <p class="text-sm text-slate-500 dark:text-slate-400">Account history — lock/unlock and archive/unarchive events</p>
+    </div>
+  </div>
+
+  <div class="card">
+    {% if entries %}
+    <div class="divide-y divide-slate-100 dark:divide-white/[0.06]">
+      {% for e in entries %}
+      <div class="px-5 py-3 text-sm">
+        <div class="flex items-center justify-between gap-3">
+          <span class="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium uppercase tracking-wide text-slate-600 dark:bg-white/[0.06] dark:text-slate-300">{{ e.event_type }}</span>
+          <span class="text-xs text-slate-400">{{ e.created_at.strftime('%b %-d, %Y %-I:%M %p') }}</span>
+        </div>
+        <p class="mt-1.5 text-slate-700 dark:text-slate-200">{{ e.description }}</p>
+        <p class="mt-0.5 text-xs text-slate-400">{{ ("by " ~ e.actor.full_name) if e.actor else "via desktop Control Panel" }}</p>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+      {{ empty_state("No lifecycle events yet", "Lock/unlock and archive/unarchive actions for this account will show up here.") }}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

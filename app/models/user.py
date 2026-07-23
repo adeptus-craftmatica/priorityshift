@@ -80,6 +80,11 @@ class User(db.Model, UserMixin, TimestampMixin):
 
     capacity_hours_per_week = db.Column(db.Float, nullable=False, default=40.0)
     active = db.Column(db.Boolean, nullable=False, default=True)
+    # Mirrors Project.is_archived: a permanent "this person is done" state
+    # (e.g. left the company), distinct from a temporary lock-out. Archiving
+    # always forces active=False; unarchiving restores it. Hidden from
+    # default active-user lists, never deleted — see app/services/user_lifecycle.py.
+    is_archived = db.Column(db.Boolean, nullable=False, default=False)
     avatar_color = db.Column(db.String(7), default="#6366f1")
 
     mfa_enabled = db.Column(db.Boolean, nullable=False, default=False)

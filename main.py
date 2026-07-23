@@ -510,6 +510,48 @@ class ResetPasswordDialog(QDialog):
         return self.password.text()
 
 
+class UserHistoryDialog(QDialog):
+    """Read-only view of a user's audit trail — every lock/unlock/archive/
+    unarchive event, oldest-to-newest reversed (newest first), never
+    editable and never deleted from here."""
+
+    def __init__(self, full_name, entries, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(f"History — {full_name}")
+        self.setMinimumSize(480, 360)
+
+        layout = QVBoxLayout()
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(12)
+
+        title = QLabel(f"Account history for {full_name}")
+        title.setObjectName("title")
+        layout.addWidget(title)
+
+        table = QTableWidget(len(entries), 3)
+        table.setHorizontalHeaderLabels(["When", "Event", "Description"])
+        table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        table.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
+        for row, (created_at, event_type, description) in enumerate(entries):
+            table.setItem(row, 0, QTableWidgetItem(created_at.strftime("%Y-%m-%d %H:%M") if created_at else ""))
+            table.setItem(row, 1, QTableWidgetItem(event_type))
+            table.setItem(row, 2, QTableWidgetItem(description))
+        layout.addWidget(table, stretch=1)
+
+        if not entries:
+            layout.addWidget(QLabel("No lifecycle events recorded yet."))
+
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(self.accept)
+        button_row = QHBoxLayout()
+        button_row.addStretch()
+        button_row.addWidget(close_btn)
+        layout.addLayout(button_row)
+
+        self.setLayout(layout)
+
+
 class UserManagementWindow(QDialog):
     """The full user-management plane, done in the desktop app rather than
     the website — list, create, edit, reset password, lock/unlock. Talks
@@ -530,9 +572,15 @@ class UserManagementWindow(QDialog):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(14)
 
+        header = QHBoxLayout()
         title = QLabel("Manage Users")
         title.setObjectName("title")
-        layout.addWidget(title)
+        header.addWidget(title)
+        header.addStretch()
+        self.show_archived_check = QCheckBox("Show archived")
+        self.show_archived_check.stateChanged.connect(lambda _: self.refresh_users())
+        header.addWidget(self.show_archived_check)
+        layout.addLayout(header)
 
         self.table = QTableWidget(0, 5)
         self.table.setHorizontalHeaderLabels(["Full Name", "Username", "Email", "Role", "Status"])
@@ -555,12 +603,18 @@ class UserManagementWindow(QDialog):
         self.reset_pw_btn = QPushButton("Reset Password")
         self.reset_pw_btn.clicked.connect(self.reset_password)
         self.toggle_active_btn = QPushButton("Lock / Unlock")
-        self.toggle_active_btn.setObjectName("danger")
         self.toggle_active_btn.clicked.connect(self.toggle_active)
+        self.archive_btn = QPushButton("Archive")
+        self.archive_btn.setObjectName("danger")
+        self.archive_btn.clicked.connect(self.archive_toggle)
+        self.history_btn = QPushButton("View History")
+        self.history_btn.clicked.connect(self.view_history)
         buttons.addWidget(self.new_btn)
         buttons.addWidget(self.edit_btn)
         buttons.addWidget(self.reset_pw_btn)
         buttons.addWidget(self.toggle_active_btn)
+        buttons.addWidget(self.archive_btn)
+        buttons.addWidget(self.history_btn)
         buttons.addStretch()
         close_btn = QPushButton("Close")
         close_btn.clicked.connect(self.accept)
@@ -575,6 +629,14 @@ class UserManagementWindow(QDialog):
         self.edit_btn.setEnabled(has_selection)
         self.reset_pw_btn.setEnabled(has_selection)
         self.toggle_active_btn.setEnabled(has_selection)
+        self.history_btn.setEnabled(has_selection)
+        self.archive_btn.setEnabled(has_selection)
+        if has_selection:
+            status_item = self.table.item(self.table.currentRow(), 4)
+            is_archived = bool(status_item.data(Qt.ItemDataRole.UserRole + 1))
+            self.archive_btn.setText("Unarchive" if is_archived else "Archive")
+        else:
+            self.archive_btn.setText("Archive")
 
     def _selected_user_id(self):
         rows = self.table.selectionModel().selectedRows()
@@ -583,17 +645,23 @@ class UserManagementWindow(QDialog):
         return self.table.item(rows[0].row(), 0).data(Qt.ItemDataRole.UserRole)
 
     def refresh_users(self):
+        show_archived = self.show_archived_check.isChecked()
         with self.flask_app.app_context():
             from app.models import User
-            users = User.query.order_by(User.full_name).all()
+            query = User.query
+            if not show_archived:
+                query = query.filter_by(is_archived=False)
+            users = query.order_by(User.full_name).all()
             rows = [
                 (u.id, u.full_name, u.username, u.email,
-                 u.role.name if u.role else "—", "Active" if u.active else "Locked")
+                 u.role.name if u.role else "—",
+                 "Archived" if u.is_archived else ("Active" if u.active else "Locked"),
+                 u.is_archived)
                 for u in users
             ]
 
         self.table.setRowCount(len(rows))
-        for row, (uid, full_name, username, email, role_name, status) in enumerate(rows):
+        for row, (uid, full_name, username, email, role_name, status, is_archived) in enumerate(rows):
             name_item = QTableWidgetItem(full_name)
             name_item.setData(Qt.ItemDataRole.UserRole, uid)
             self.table.setItem(row, 0, name_item)
@@ -601,8 +669,11 @@ class UserManagementWindow(QDialog):
             self.table.setItem(row, 2, QTableWidgetItem(email))
             self.table.setItem(row, 3, QTableWidgetItem(role_name))
             status_item = QTableWidgetItem(status)
+            status_item.setData(Qt.ItemDataRole.UserRole + 1, is_archived)
             if status == "Locked":
                 status_item.setForeground(Qt.GlobalColor.red)
+            elif status == "Archived":
+                status_item.setForeground(Qt.GlobalColor.gray)
             self.table.setItem(row, 4, status_item)
         self._update_button_states()
 
@@ -687,7 +758,13 @@ class UserManagementWindow(QDialog):
                 user.manager_id = values["manager_id"]
                 user.client_id = values["client_id"]
                 user.capacity_hours_per_week = values["capacity_hours_per_week"]
-                user.active = values["active"]
+                if values["active"] != user.active:
+                    # Route through the same audited path as the dedicated
+                    # Lock/Unlock button — this form's Active checkbox is
+                    # just another way to reach the same state change, and
+                    # must not be a silent way around the audit trail.
+                    from app.services.user_lifecycle import set_active
+                    set_active(user, values["active"])
                 if values["password"]:
                     user.set_password(values["password"])
                 user.departments = Department.query.filter(Department.id.in_(values["department_ids"])).all()
@@ -742,12 +819,64 @@ class UserManagementWindow(QDialog):
             with self.flask_app.app_context():
                 from app.extensions import db
                 from app.models import User
+                from app.services.user_lifecycle import set_active
                 user = User.query.get(user_id)
-                user.active = not user.active
+                set_active(user, not user.active)
                 db.session.commit()
             self.refresh_users()
         except Exception as exc:
             QMessageBox.critical(self, "Couldn't update user", str(exc))
+
+    def archive_toggle(self):
+        user_id = self._selected_user_id()
+        if user_id is None:
+            return
+        with self.flask_app.app_context():
+            from app.models import User
+            target = User.query.get(user_id)
+            full_name, currently_archived = target.full_name, target.is_archived
+
+        if currently_archived:
+            question = f"Restore {full_name} from the archive? They'll be able to log in again."
+        else:
+            question = (
+                f"Archive {full_name}? This locks the account (they can't log in) and hides "
+                f"them from active-user lists. Nothing is deleted — you can restore them later."
+            )
+        confirmed = QMessageBox.question(self, "Unarchive user" if currently_archived else "Archive user", question)
+        if confirmed != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+            with self.flask_app.app_context():
+                from app.extensions import db
+                from app.models import User
+                from app.services.user_lifecycle import archive_user, unarchive_user
+                user = User.query.get(user_id)
+                if currently_archived:
+                    unarchive_user(user)
+                else:
+                    archive_user(user)
+                db.session.commit()
+            self.refresh_users()
+        except Exception as exc:
+            QMessageBox.critical(self, "Couldn't update user", str(exc))
+
+    def view_history(self):
+        user_id = self._selected_user_id()
+        if user_id is None:
+            return
+        with self.flask_app.app_context():
+            from app.models import User
+            from app.services.user_lifecycle import get_user_history
+            target = User.query.get(user_id)
+            full_name = target.full_name
+            entries = [
+                (e.created_at, e.event_type, e.description) for e in get_user_history(target)
+            ]
+
+        dialog = UserHistoryDialog(full_name, entries, parent=self)
+        dialog.exec()
 
 
 class _Ref:

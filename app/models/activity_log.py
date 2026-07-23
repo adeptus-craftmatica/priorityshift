@@ -6,20 +6,21 @@ EVENT_TYPES = (
     "status_changed", "phase_changed", "health_changed", "note_added",
     "comment_added", "file_uploaded", "roadblock_added", "approval",
     "time_entry", "completed", "reopened", "converted", "skipped",
-    "escalated", "correction",
+    "escalated", "correction", "locked", "unlocked", "archived", "unarchived",
 )
 
 
 class ActivityLog(db.Model):
-    """Immutable timeline entry for a work item. Admins may correct data
-    elsewhere, but corrections append a new `correction` entry rather than
-    mutating or deleting prior history."""
+    """Immutable timeline entry for a work item (or a user account's own
+    lifecycle — see item_type='user'). Admins may correct data elsewhere,
+    but corrections append a new `correction` entry rather than mutating or
+    deleting prior history."""
 
     __tablename__ = "activity_logs"
 
     id = db.Column(db.Integer, primary_key=True)
 
-    item_type = db.Column(db.String(20), nullable=False)  # 'project' | 'chore' | 'idea'
+    item_type = db.Column(db.String(20), nullable=False)  # 'project' | 'chore' | 'idea' | 'user'
     item_id = db.Column(db.Integer, nullable=False)
 
     actor_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
